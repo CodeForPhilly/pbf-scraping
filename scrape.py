@@ -22,8 +22,14 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
+from datetime import date
 
-def main():
+PAGE_URL = "https://www.courts.phila.gov/NewCriminalFilings/date/default.aspx"
+
+def main(record_date = None):
+    if record_date is None:
+        record_date = str(date.today())
+
     # This list will hold the scraped data from each page
     scraped_list_per_page = []
     # The current page is 1 and the end page as of now is 3 (this needs to be manually checked)
@@ -33,9 +39,12 @@ def main():
         # Take the current page number and increament it each iteration
         curr_page_num = 1 + curr_page_num
         # The current webpage stores up to 24 criminal files and we are going through each page by updating the page number in the format
-        curr_page = "https://www.courts.phila.gov/NewCriminalFilings/date/default.aspx?search=2020-06-12&searchdt=&searchtype=&page={}".format(curr_page_num)
+        params = {
+                "search": record_date,
+                "page": curr_page_num
+                }
         # Then get the HTML file of the page as text
-        source = requests.get(curr_page).text
+        source = requests.get(PAGE_URL, params = params).text
         # Then create a BeautifulSoup object of the text, this makes pulling data out of HTML files easier
         # To learn more about it read here (https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
         soup = BeautifulSoup(source)
