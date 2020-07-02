@@ -1,6 +1,6 @@
-TODAY:=$(shell date +%Y-%m-%d)
+YESTERDAY:=$(shell date +%Y-%m-%d -d "1 day ago")
 
-all: output/$(TODAY).csv
+all: output/$(YESTERDAY).csv
 
 output/%.csv: scrape.py
 	python $< --record-date $* --out $@
