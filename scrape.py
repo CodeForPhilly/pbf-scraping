@@ -22,11 +22,21 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import re
+import argh
+
 from datetime import date
+
 
 PAGE_URL = "https://www.courts.phila.gov/NewCriminalFilings/date/default.aspx"
 
-def main(record_date = None):
+
+@argh.arg("--record-date", help = "Date of records to parse (must be within last 7 days)")
+@argh.arg("--out", help = "Name of a file for resulting CSV.")
+def main(record_date = None, out = None):
+    """Scrape data from the Philadelphia Courts, clean, and output a CSV file.
+
+    """
+
     if record_date is None:
         record_date = str(date.today())
 
@@ -56,7 +66,7 @@ def main(record_date = None):
         # filings and then it will continue to the next page and at the end we will have one complete joined list
         scraped_list_per_page = (extract_attributes(list_of_criminal_filings)) + scraped_list_per_page
     # The joined list will then be passed into the create_csv function and converted to CSV
-    create_csv(scraped_list_per_page)
+    create_csv(out, scraped_list_per_page)
 
 def extract_attributes(list_of_criminal_filings):
     list_of_criminal_file_scraped = []
@@ -99,9 +109,9 @@ def scrape_and_store(text):
     return [defendant_name, age, city, state, zip_code, docket_number, filing_date, filing_time, charge, represented, in_custody, bail_status, bail_date, bail_time, bail_type, bail_amount, outstanding_bail_amt]
 
 # This function will make the list of lists into a CSV file with Pandas
-def create_csv(list_of_criminal_file_scraped):
+def create_csv(fname, list_of_criminal_file_scraped):
     df = pd.DataFrame(list_of_criminal_file_scraped)
-    df.to_csv("output.csv", index=False, header=["Defendant Name", "Age", "City", "State", "Zip Code", "Docket Number", "Filing Date", "Filing Time", "Charge", "Represented", "In Custody", "Bail Status", "Bail Date", "Bail Time", "Bail Type", "Bail Amount", "Outstanding Bail Amount"])
+    df.to_csv(fname, index=False, header=["Defendant Name", "Age", "City", "State", "Zip Code", "Docket Number", "Filing Date", "Filing Time", "Charge", "Represented", "In Custody", "Bail Status", "Bail Date", "Bail Time", "Bail Type", "Bail Amount", "Outstanding Bail Amount"])
 
 if __name__ == "__main__":
-    main()
+    argh.dispatch_command(main)
