@@ -1,4 +1,7 @@
 # pbf-scraping
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/CodeForPhilly/pbf-scraping/master)
+
 Project for Philadelphia Bail Fund to scrape new criminal filings from municipal court
 
 
