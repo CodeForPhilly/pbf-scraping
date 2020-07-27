@@ -19,7 +19,6 @@ jobs:
       - name: Scrape data
         run: |
           make
-          csv_name=$(date +%Y-%m-%d -d "1 day ago").csv
       - name: Parse data
         run: |
           python parse.py > email_body.txt
@@ -42,4 +41,4 @@ jobs:
           body: file://email_body.txt
           to: tuh16620@temple.edu, maryliu5758@gmail.com
           from: test.dummy.6000@gmail.com
-          attachments: $(date +%Y-%m-%d -d "1 day ago").csv
+          attachments: scraped_data.csv
