@@ -19,11 +19,10 @@ jobs:
       - name: Scrape data
         run: |
           make
-          ls
+          csv_name=$(date +%Y-%m-%d -d "1 day ago").txt
       - name: Parse data
         run: |
-          python parse.py
-          ls
+          python parse.py > email_body.txt
       - name: S3 Sync
         uses: jakejarvis/s3-sync-action@v0.5.1
         env:
@@ -32,3 +31,15 @@ jobs:
           AWS_S3_BUCKET: "test-pbf-scraping"
           AWS_REGION: "us-east-1"
           SOURCE_DIR: "output"
+      - name: Send mail
+        uses: dawidd6/action-send-mail@v2
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: Bail Data
+          body: file://email_body.txt
+          to: tuh16620@temple.edu, maryliu5758@gmail.com
+          from: test.dummy.6000@gmail.com
+          attachments: $csv_name
