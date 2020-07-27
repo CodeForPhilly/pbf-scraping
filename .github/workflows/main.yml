@@ -19,6 +19,8 @@ jobs:
       - name: Scrape data
         run: |
           make
+          csv_name=$(date +%Y-%m-%d -d "1 day ago").csv
+          cp $csv_name scraped_data.csv
           ls
       - name: Parse data
         run: |
