@@ -19,8 +19,8 @@ jobs:
       - name: Scrape data
         run: |
           make
-          csv_name=$(date +%Y-%m-%d -d "1 day ago")
-          cp output/$csv_name.csv output/scraped_data.csv
+          dynamic_csv_name=$(date +%Y-%m-%d -d "1 day ago").csv
+          cp output/$dynamic_csv_name output/static_csv_name.csv
       - name: Parse data
         run: |
           python parse.py > email_body.txt
@@ -43,4 +43,4 @@ jobs:
           body: file://email_body.txt
           to: ${{ secrets.LISTSERV }}
           from: ${{ secrets.MAIL_USERNAME }}
-          attachments: ./output/scraped_data.csv
+          attachments: ./output/static_csv_name.csv
