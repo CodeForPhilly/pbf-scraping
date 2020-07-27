@@ -9,7 +9,7 @@ def main():
 
     yesterday = today - datetime.timedelta(days=1)
 
-    file_name = glob.glob("*.csv")[0]
+    file_name = glob.glob("scraped_data.csv")[0]
     df = pd.read_csv(file_name)
 
     #Total cases is just number of rows in the csv
