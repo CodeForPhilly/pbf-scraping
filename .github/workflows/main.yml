@@ -19,7 +19,7 @@ jobs:
       - name: Scrape data
         run: |
           make
-          csv_name=$(date +%Y-%m-%d -d "1 day ago").txt
+          csv_name=$(date +%Y-%m-%d -d "1 day ago").csv
       - name: Parse data
         run: |
           python parse.py > email_body.txt
