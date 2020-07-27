@@ -42,4 +42,4 @@ jobs:
           body: file://email_body.txt
           to: tuh16620@temple.edu, maryliu5758@gmail.com
           from: test.dummy.6000@gmail.com
-          attachments: file://$csv_name
+          attachments: $(date +%Y-%m-%d -d "1 day ago").csv
