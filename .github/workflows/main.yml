@@ -1,11 +1,6 @@
 name: Main
 on:
-  push:
-    branches: 
-      - 'master'
-  schedule: 
-    # Runs every day at 4am
-    - cron: '0 4 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
