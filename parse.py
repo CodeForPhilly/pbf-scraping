@@ -16,29 +16,29 @@ def main():
     total_cases = len(df)
 
     #Get all cases where cash bail was set
-    all_cash_bail = df[df['Bail Type'].str.contains('Monetary')]
+    all_cash_bail = df[df['Bail Type'].fillna("").str.contains('Monetary')]
     total_cash_bail = (len(all_cash_bail))
     percentage_cash_bail = int((total_cash_bail / total_cases) * 100)
 
     #Get all ROR cases
-    all_ror = df[df['Bail Type'].str.contains('ROR')]
+    all_ror = df[df['Bail Type'].fillna("").str.contains('ROR')]
     total_ror = (len(all_ror))
     percentage_ror  = int((total_ror / total_cases) * 100)
 
     #Get all Unsecured cases
-    all_unsecured = df[df['Bail Type'].str.contains('Unsecured')]
+    all_unsecured = df[df['Bail Type'].fillna("").str.contains('Unsecured')]
     total_unsecured = (len(all_unsecured))
     percentage_unsecured  = int((total_unsecured / total_cases) * 100)
 
     # Get all ROR cases
-    all_denied = df[df['Bail Type'].str.contains('Denied')]
+    all_denied = df[df['Bail Type'].fillna("").str.contains('Denied')]
     total_denied = (len(all_denied))
     percentage_denied = int((total_denied / total_cases) * 100)
 
     ##Now some stats on the cases where cash bail was set
 
     #Get all where bail was posted
-    all_posted = all_cash_bail[all_cash_bail['Bail Status'].str.contains('Posted')]
+    all_posted = all_cash_bail[all_cash_bail['Bail Status'].fillna("").str.contains('Posted')]
     total_posted = len(all_posted)
     percentage_posted = int((total_posted / total_cash_bail) * 100)
 
