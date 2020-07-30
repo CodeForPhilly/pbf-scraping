@@ -9,6 +9,9 @@ jobs:
     # This job runs on Linux
     runs-on: ubuntu-18.04
     steps:
+      - uses: actions/checkout@master
+      - name: Set env
+        run: echo ::set-env name=csv_name::$(date +%Y-%m-%d -d "1 day ago").csv
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -43,4 +46,4 @@ jobs:
           body: file://email_body.txt
           to: ${{ secrets.LISTSERV }}
           from: ${{ secrets.MAIL_USERNAME }}
-          attachments: ./output/static_csv_name.csv
+          attachments: ./output/${{ env.csv_name }}
