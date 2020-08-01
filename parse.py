@@ -1,8 +1,9 @@
-import pandas as pd
-import argh
 import datetime
-import os
 import glob
+import os
+
+import pandas as pd
+
 
 def main():
     today = datetime.date.today()
@@ -103,5 +104,5 @@ def clean_up_money(x):
     no_dollar_sign = x[1:len(x) - 3]
     return no_dollar_sign.replace(',', '')
 
-
-main()
+if __name__ == "__main__":
+    main()
