@@ -1,0 +1,6 @@
+.venv/
+.vscode/
+
+# Ignore everying in the output directory except .gitkeep
+output/*
+!output/.gitkeep
