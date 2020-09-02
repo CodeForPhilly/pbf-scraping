@@ -17,8 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Set env
-        run: echo ::set-env name=csv_name::$(date +%Y-%m-%d -d "1 day ago").csv
-        run: echo ::set-env name=yesterday::$(date +%Y-%m-%d -d "1 day ago").csv
+        run: |
+          echo ::set-env name=csv_name::$(date +%Y-%m-%d -d "1 day ago").csv
+          echo ::set-env name=yesterday::$(date +%Y-%m-%d -d "1 day ago").csv
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
