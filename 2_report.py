@@ -7,10 +7,6 @@
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.4.2
-#   kernelspec:
-#     display_name: venv-pbf-scraping
-#     language: python
-#     name: venv-pbf-scraping
 # ---
 
 # + tags=["hide-input"]
