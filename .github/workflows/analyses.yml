@@ -1,4 +1,4 @@
-name: Main
+name: Report website
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     # Job name is Greeting
-    name: Scrape and store
+    name: Generate Reports
     # This job runs on Linux
     runs-on: ubuntu-18.04
     steps:
