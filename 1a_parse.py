@@ -3,13 +3,14 @@ import argh
 import datetime
 import os
 import glob
+import sys
 
 def main():
     today = datetime.date.today()
 
     yesterday = today - datetime.timedelta(days=1)
 
-    file_name = glob.glob("./output/*.csv")[0]
+    file_name = sys.argv[1]
     df = pd.read_csv(file_name)
 
     #Total cases is just number of rows in the csv
