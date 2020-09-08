@@ -26,8 +26,10 @@ jobs:
       - name: Build report
         run: |
           make 2_report.html
+          mkdir -p reports
+          mv 2_report.html reports
       - name: Deploy to gh pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./
+          publish_dir: ./reports
