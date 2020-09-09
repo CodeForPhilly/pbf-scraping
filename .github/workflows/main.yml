@@ -7,6 +7,11 @@ on:
   schedule: 
     # Runs every day at 4am
     - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date (e.g. 2020-01-31)'     
+        required: true
 
 jobs:
   build:
@@ -18,8 +23,11 @@ jobs:
       - uses: actions/checkout@master
       - name: Set env
         run: |
-          echo ::set-env name=csv_name::$(date +%Y-%m-%d -d "1 day ago").csv
-          echo ::set-env name=yesterday::$(date +%Y-%m-%d -d "1 day ago")
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo '::set-env name=scrape_date::'"${{ github.event.inputs.date }}";
+          else
+            echo '::set-env name=yesterday::'$(date +%Y-%m-%d -d '1 day ago');
+          fi
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
