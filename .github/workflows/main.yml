@@ -3,7 +3,7 @@ name: Main
 on:
   push:
     branches: 
-      - 'feat-manual-trigger'
+      - 'master'
   schedule: 
     # Runs every day at 4am
     - cron: '0 4 * * *'
