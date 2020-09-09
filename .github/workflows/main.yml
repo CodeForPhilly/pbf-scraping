@@ -26,7 +26,7 @@ jobs:
           if [ -n "${{ github.event.inputs.date }}" ]; then
             echo '::set-env name=scrape_date::'"${{ github.event.inputs.date }}";
           else
-            echo '::set-env name=yesterday::'$(date +%Y-%m-%d -d '1 day ago');
+            echo '::set-env name=scrape_date::'$(date +%Y-%m-%d -d '1 day ago');
           fi
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -37,10 +37,10 @@ jobs:
           pip install -r requirements.txt
       - name: Scrape data
         run: |
-          make output/"$yesterday".csv output/"$yesterday"_anonymized.csv
+          make output/"$scrape_date".csv output/"$scrape_date"_anonymized.csv
       - name: Parse data
         run: |
-          python 1a_parse.py output/"$yesterday".csv > email_body.txt
+          python 1a_parse.py output/"$scrape_date".csv > email_body.txt
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
         with:
@@ -52,10 +52,10 @@ jobs:
           body: file://email_body.txt
           to: ${{ secrets.LISTSERV }}
           from: ${{ secrets.MAIL_USERNAME }}
-          attachments: ./output/${{ env.yesterday }}.csv
+          attachments: ./output/${{ env.scrape_date }}.csv
       - name: Delete non-anonymized data
         run: |
-          rm output/"$yesterday".csv
+          rm output/"$scrape_date".csv
       - name: S3 Sync
         uses: jakejarvis/s3-sync-action@v0.5.1
         env:
