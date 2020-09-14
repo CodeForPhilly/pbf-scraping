@@ -1,3 +1,5 @@
 .env
 .ipynb
 .html
+
+.ipynb_checkpoints
