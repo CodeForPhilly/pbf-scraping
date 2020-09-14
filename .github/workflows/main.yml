@@ -53,7 +53,7 @@ jobs:
           python 1a_parse.py output/"$scrape_date".csv > email_body.txt
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
-        if: ${{ env.email != "" }}
+        if: ${{ env.email }}
         with:
           server_address: smtp.gmail.com
           server_port: 465
