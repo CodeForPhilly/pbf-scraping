@@ -34,10 +34,10 @@ jobs:
           if [ -n "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo '::set-env name=email::'"${{ github.event.inputs.email }}";
           else
-            echo '::set-env name=email::'"${{ LISTSERVE }}"
+            echo '::set-env name=email::'"${{ LISTSERV }}"
           fi
         env:
-          LISTSERVE: ${{ secrets.LISTSERV }}
+          LISTSERV: ${{ secrets.LISTSERV }}
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
