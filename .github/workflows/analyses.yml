@@ -1,0 +1,41 @@
+name: Report website
+
+on:
+  push:
+    branches: 
+      - 'feat-analysis'
+  schedule: 
+    # Runs every day at 4am
+    - cron: '0 4 * * *'
+
+jobs:
+  build:
+    # Job name is Greeting
+    name: Generate Reports
+    # This job runs on Linux
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Build report
+        run: |
+          make 2_report.html
+          mkdir -p reports
+          mv 2_report.html reports
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          REGION_NAME: ${{ secrets.REGION_NAME }}
+          S3_STAGING_DIR: ${{ secrets.S3_STAGING_DIR }}
+          SCHEMA_NAME: ${{ secrets.SCHEMA_NAME }}
+      - name: Deploy to gh pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          publish_dir: ./reports
