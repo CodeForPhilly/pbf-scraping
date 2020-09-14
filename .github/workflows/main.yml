@@ -12,6 +12,8 @@ on:
       date:
         description: 'Date (e.g. 2020-01-31)'     
         required: true
+      email:
+        description: 'Email to'
 
 jobs:
   build:
@@ -28,6 +30,14 @@ jobs:
           else
             echo '::set-env name=scrape_date::'$(date +%Y-%m-%d -d '1 day ago');
           fi
+
+          if [ -n "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo '::set-env name=email::'"${{ github.event.inputs.email }}";
+          else
+            echo '::set-env name=email::'"${{ LISTSERVE }}"
+          fi
+        env:
+          LISTSERVE: ${{ secrets.LISTSERV }}
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -43,6 +53,7 @@ jobs:
           python 1a_parse.py output/"$scrape_date".csv > email_body.txt
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
+        if: {{ env.email }}
         with:
           server_address: smtp.gmail.com
           server_port: 465
