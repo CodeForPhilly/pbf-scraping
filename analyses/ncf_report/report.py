@@ -7,8 +7,6 @@
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.4.2
-#   kernelspec:
-#     language: python
 # ---
 
 # + tags=["hide-input"]
