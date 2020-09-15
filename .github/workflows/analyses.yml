@@ -3,7 +3,7 @@ name: Report website
 on:
   push:
     branches: 
-      - 'feat-analysis-types'
+      - 'master'
   schedule: 
     # Runs every day at 4am
     - cron: '0 4 * * *'
