@@ -36,6 +36,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3.6.4
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          exclude_assets: '*.py,*.ipynb'
+          exclude_assets: '**/*.py,**/*.ipynb'
+          enable_jekyll: true
           publish_dir: ./analyses
 
