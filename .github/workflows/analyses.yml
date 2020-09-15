@@ -3,7 +3,7 @@ name: Report website
 on:
   push:
     branches: 
-      - 'feat-analysis'
+      - 'feat-analysis-types'
   schedule: 
     # Runs every day at 4am
     - cron: '0 4 * * *'
@@ -25,9 +25,7 @@ jobs:
           pip install -r requirements.txt
       - name: Build report
         run: |
-          make 2_report.html
-          mkdir -p reports
-          mv 2_report.html reports
+          make analyses/ncf_report/2_report.html
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -38,4 +36,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
-          publish_dir: ./reports
+          publish_dir: ./analyses
