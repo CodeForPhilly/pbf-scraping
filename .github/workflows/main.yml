@@ -5,8 +5,8 @@ on:
     branches: 
       - 'master'
   schedule: 
-    # Runs every day at 4am
-    - cron: '0 4 * * *'
+    # Runs every day at 6am EDT (cron in UTC)
+    - cron: '0 10 * * *'
   workflow_dispatch:
     inputs:
       date:
