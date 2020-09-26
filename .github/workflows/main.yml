@@ -1,9 +1,6 @@
 name: Main
 
 on:
-  push:
-    branches: 
-      - 'master'
   schedule: 
     # Runs every day at 6am EDT (cron in UTC)
     - cron: '0 10 * * *'
