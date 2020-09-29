@@ -1,0 +1,54 @@
+---
+title: "pbf - data cleaning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(janitor)
+library(digest)
+library(purrr)
+```
+
+```{r, message= FALSE}
+fnames = dir("data_adam", full.names = TRUE)
+deidentified <- 
+  map_df(fnames, read_delim, skip = 1, delim = ";") %>%
+  clean_names() %>%
+  mutate(id = NA, name = NULL) %>%
+  select(id, everything())
+
+# deidentified <-
+#   read_delim("data/sensitive_raw.csv", skip = 1, delim = ";") %>%
+#   clean_names() %>%
+#   mutate(id = map_chr(name, digest) %>% dense_rank(), name = NULL) %>%
+#   select(id, everything())
+
+# deidentified %>% write_csv("output/0a_deidentified.csv")
+```
+
+
+```{r}
+  
+cleaned <-
+  deidentified %>%
+  mutate_at(vars(ends_with("date")), lubridate::mdy_hms) %>%
+  mutate_at(
+    vars(bail_amount, outstanding_bail_amount),
+    ~ str_extract(., "\\$([0-9,]+)\\.[0-9]{2}") %>% str_remove_all(",|\\$") %>% as.numeric()
+  ) %>%
+  mutate_if(is.character, ~str_trim(., "both"))
+
+# cleaned %>% write_csv("output/0b_cleaned.csv")
+```
+
+
+```{r}
+distinct_dockets <-
+  cleaned %>%
+  distinct(docket_number, .keep_all = TRUE)
+
+distinct_dockets %>%
+  write_csv("data_adam_deidentified.csv")
+```
