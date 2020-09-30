@@ -9,18 +9,22 @@ from funcs_parse import *
 from parse_docket import *
 
 
-def download(link1,link2,docketNumber):
+def download(docket_link, court_link, docketNumber):
     #os.system('curl "'+link+'" >> downloads\\'+docketNumber+".pdf")
-    dir1="./tmp/dockets/"
-    dir2="./tmp/court/"
-    r_pdf = requests.get(link1, headers={"User-Agent": "ParsingThing"})
-    with open(dir1+docketNumber+'.pdf', 'wb') as f:
+    dockets_path = "./tmp/dockets/"
+    court_path   = "./tmp/court/"
+    dockets_file = dockets_path + docketNumber+'.pdf'
+    court_file   = court_path + docketNumber+'.pdf'
+
+    r_pdf = requests.get(docket_link, headers={"User-Agent": "ParsingThing"})
+    with open(dockets_file, 'wb') as f:
         f.write(r_pdf.content)
-    text = scrape_pdf(dir1+docketNumber+'.pdf')
-    parse = parse_pdf(dir1+docketNumber+'.pdf', text)
+    text = scrape_pdf(dockets_file)
+    parse = parse_pdf(dockets_file, text)
     print(parse)
-    r_pdf = requests.get(link2, headers={"User-Agent": "ParsingThing"})
-    with open(dir2+docketNumber+'.pdf', 'wb') as f:
+
+    r_pdf = requests.get(court_link, headers={"User-Agent": "ParsingThing"})
+    with open(court_file, 'wb') as f:
         f.write(r_pdf.content)
     return parse
 
