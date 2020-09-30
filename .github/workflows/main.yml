@@ -52,8 +52,8 @@ jobs:
         uses: dawidd6/action-send-mail@v2
         if: ${{ env.email }}
         with:
-          server_address: smtp.gmail.com
-          server_port: 465
+          server_address: smtp.mail.me.com
+          server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: Bail Data
