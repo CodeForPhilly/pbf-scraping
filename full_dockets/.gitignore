@@ -1,0 +1,3 @@
+tmp/court/*.pdf
+tmp/dockets/*.pdf
+geckodriver*
