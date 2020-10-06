@@ -1,3 +1,14 @@
+import pdfquery
+import PyPDF2
+import re
+import os
+import numpy as np
+import time
+from funcs_parse import *
+import argparse
+
+
+
 def scrape_pdf(filename):
     """ 
     Scrapes the PDF
@@ -8,8 +19,6 @@ def scrape_pdf(filename):
     Returns: 
     text: Entire document as a string.
     """
-    import PyPDF2
-    import re
     FileObj = open(filename, 'rb')
     count = 0
     text = " "  
@@ -39,7 +48,6 @@ def clean_text(txt):
     txt: A cleaner version of the entire document which includes removal of
          headers, printed dates, and newline characters.
     """
-    import re
     replacements = [('\n', ' '),
                    ('CPCMS 9082', ''),
                    ('MUNICIPAL COURT OF PHILADELPHIA COUNTY', '')]
@@ -52,7 +60,9 @@ def clean_text(txt):
     for pattern in [disclaimer_pattern, printed_pattern]:
         txt = re.sub(pattern, '', txt)
     return txt
-def parse_pdf(text):
+
+
+def parse_pdf(filename,text):
     """ 
     Parses specific elements from the string 
     This methodology relies heavily on regex and is extremely brittle. Testing must
@@ -65,7 +75,6 @@ def parse_pdf(text):
     Returns: 
     result: a dictionary of specific elements 
     """
-    import re
     # initialize result as an empty dictionary
     result = {}
     # Set RegEx patterns to first break the document into sections
@@ -88,23 +97,20 @@ def parse_pdf(text):
     # Loop through RegEx patterns to break document into sections
     for pattern in patternlist:
         sections[pattern[0]] = re.findall(pattern[1], text, re.DOTALL)[0].strip()
+        
+    pages_charges = find_pages(filename,'Statute Description')
+    pages_bail = find_pages(filename,'Filed By')
+    pages = list(set(pages_charges+pages_bail))
+    pdf = pdfquery.PDFQuery(filename)
+    pdf.load(pages)
+        
     ###### Extract specific fields
     # with each pattern, we append the parsed text into the results dictionary
     ### Docket Number ###
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     ### Offenses ###
-    # the first offense has its own pattern
-    pattern_1stoff = r"(?<=Orig Seq.)(.*?)(?=\d{2}\/\d{2}\/\d{4})"
-    # the next offenses repeat themselves, so we detect a section divider as well
-    pattern_offenses = r"(?<=§)(.*?)(?=\d{2}\/\d{2}\/\d{4})"
-    pattern_offense_div = r"DISPOSITION SENTENCING"
-    offenses = re.findall(pattern_1stoff, sections['charges'], re.DOTALL)
-    offense2 = re.findall(pattern_offenses, sections['charges'], re.DOTALL)
-    # combine the offenses into a single list
-    for o in offense2:
-        offenses.append(o)
-    result['offenses'] = offenses
+    result['offenses'] = get_charges(pdf, pages_charges)
     ### Arrest Date ###
     pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
     result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
@@ -116,13 +122,21 @@ def parse_pdf(text):
     result['arresting_officer'] = re.findall(pattern_officer, sections['caseinfo'], re.DOTALL)[0].strip()
     ## Defendant Atty ###
     pattern_atty = r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)"
-    result['attorney'] = re.findall(pattern_atty, sections['contactinfo'], re.DOTALL)[0].strip()
+    data_attorney = re.findall(pattern_atty, sections['contactinfo'], re.DOTALL)
+    if len(data_attorney) > 0:
+        attorney_information = data_attorney[0].strip()
+        attorney_information = attorney_information.split('Public')[0]
+        attorney_information = attorney_information.split('Private')[0]
+        attorney_information = attorney_information.split('Court Appointed')[0]
+        result['attorney'] = attorney_information
+ 
+    else:
+        result['attorney'] = ''
     ## Date of Birth ###
     pattern_dob = r"Date Of Birth:(.*?)City"
     result['dob'] = re.findall(pattern_dob, sections['defendant'], re.DOTALL)[0].strip()
     ## Magistrate Name (Bail Set by) ###
-    pattern_bailset = r"\s\d{2}\/\d{2}\/\d{5}(.*)Bail Set"
-    result['bail_set_by'] = re.findall(pattern_bailset, sections['entries'], re.DOTALL)[0]
+    result['bail_set_by'] = get_bail(pdf,pages_bail)
     ## Preliminary Details ###
     pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
     prelim = re.findall(pattern_prelim, sections['calendar'], re.DOTALL)
@@ -132,4 +146,27 @@ def parse_pdf(text):
     ###  so we can build RegEx using online tools because RegEx is hard
     ###  https://regex101.com/r/12KSAf/1/
     #print(sections['status'])
+    #print(result['bail_set_by'])
     return result
+
+
+
+def main(path):
+    for enu,file in enumerate(os.listdir(path)):
+        try:
+            print(enu,file)
+            text = scrape_pdf(path_folder+file)
+            parse = parse_pdf(path_folder+file,text)
+        except:
+            print('Failed: ',file)
+
+
+if __name__ == "__main__":
+    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/dockets/'
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('-p','--path', default= path_folder,
+                        help='Path to folder with PDFs')
+
+    args = parser.parse_args()
+    main(args.path)
+
