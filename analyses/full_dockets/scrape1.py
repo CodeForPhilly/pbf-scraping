@@ -9,6 +9,8 @@ from datetime import date
 listOfDocketNumbers=[]
 PAGE_URL = "https://www.courts.phila.gov/NewCriminalFilings/date/default.aspx"
 
+# some change
+
 
 @argh.arg("--record-date", help = "Date of records to parse (must be within last 7 days)")
 @argh.arg("--out", help = "Name of a file for resulting CSV.")
