@@ -31,3 +31,5 @@ RUN mkdir -p downloads/{dockets,court}
 ADD requirements.txt requirements.txt
 
 RUN pip install -r requirements.txt
+
+ENTRYPOINT ["/entrypoint.sh"]
