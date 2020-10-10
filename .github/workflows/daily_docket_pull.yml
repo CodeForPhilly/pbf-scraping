@@ -20,6 +20,10 @@ jobs:
       run: |
         python --version
         pwd
+    - name: Install Project Requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
     - name: Fetch and Parse Dockets
       run: |
         python analyses/full_dockets/download.py
