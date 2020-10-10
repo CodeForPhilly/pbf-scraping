@@ -1,0 +1,6 @@
+# docketdownload.yml
+name: 'Download Dockets'
+description: 'Downloads and parses the day's dockets'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
