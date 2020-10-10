@@ -1,0 +1,11 @@
+on:
+   workflow_dispatch
+
+jobs:
+  build:
+    name: Docker Docket Download Dude
+    # This job runs on Linux
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Boot docker 
+        uses: CodeForPhilly/pbf-scraping@v1
