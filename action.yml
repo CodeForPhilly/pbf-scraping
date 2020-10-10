@@ -1,0 +1,6 @@
+# action.yml
+name: 'Docket Docker Fun'
+description: 'Load up docker container, download dockets, parse them'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
