@@ -17,9 +17,9 @@ jobs:
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
-      run: |
-        su - ci-user
-      uses: actions/checkout@v2
+      - run: |
+          su - ci-user
+      - uses: actions/checkout@v2
     - name: Stand up, look around
       run: |
         pwd
