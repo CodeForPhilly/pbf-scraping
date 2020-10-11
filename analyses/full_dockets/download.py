@@ -50,6 +50,7 @@ def main():
     print(docketNumbers)
     fireFoxOptions = webdriver.FirefoxOptions()
     fireFoxOptions.headless=True
+    fireFoxOptions.add_argument('--no-sandbox')
     driver = webdriver.Firefox(options=fireFoxOptions)
     driver.maximize_window()
     links=[]
