@@ -21,7 +21,6 @@ jobs:
         pwd
         whoami
         python --version
-        sudo firefox -v
         geckodriver --version
     - name: Install Project Requirements
       run: |
