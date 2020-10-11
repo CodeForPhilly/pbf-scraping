@@ -12,8 +12,8 @@ from parse_docket import *
 def download(docket_link, court_link, docketNumber):
     #os.system('curl "'+link+'" >> downloads\\'+docketNumber+".pdf")
     dirname = os.path.dirname(__file__)
-    dockets_path = os.path.join(dirname, "analyses/full_dockets/tmp/dockets/")
-    court_path = os.path.join(dirname, "analyses/full_dockets/tmp/court/")
+    dockets_path = os.path.join(dirname, "tmp/dockets/")
+    court_path = os.path.join(dirname, "tmp/court/")
     dockets_file = dockets_path + docketNumber+'.pdf'
     court_file   = court_path + docketNumber+'.pdf'
 
@@ -35,7 +35,7 @@ def fetch():
 
 def fetch1():
     dirname = os.path.dirname(__file__)
-    file = os.path.join(dirname, "analyses/full_dockets/august_sm.csv")
+    file = os.path.join(dirname, "august_sm.csv")
     f = open(file, 'r')
     lines = f.readlines()
     new=[]
