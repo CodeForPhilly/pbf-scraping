@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     # Docker Hub image that `daily-dockets` executes in
     container:
-      image: rayfallon/pbf-scraping:0.2
+      image: rayfallon/pbf-scraping:latest
       options: user --ci-user
     steps:
     # Downloads a copy of the code in your repository before running CI tests
