@@ -31,3 +31,6 @@ jobs:
       run: |
         chmod -R 777 .
         runuser -l ci-user -c 'python /__w/pbf-scraping/pbf-scraping/analyses/full_dockets/download.py'
+    - name: Upload Files To AWS
+      run: |
+        ls -la analyses/full_dockets/tmp/dockets
