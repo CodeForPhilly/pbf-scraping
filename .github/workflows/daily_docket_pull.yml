@@ -31,4 +31,5 @@ jobs:
         pip install -r requirements.txt
     - name: Fetch and Parse Dockets
       run: |
+        su - ci-user
         python analyses/full_dockets/download.py
