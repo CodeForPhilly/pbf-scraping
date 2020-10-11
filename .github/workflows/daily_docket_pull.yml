@@ -29,4 +29,5 @@ jobs:
         pip install -r requirements.txt
     - name: Fetch and Parse Dockets
       run: |
+        chmod -R 777 .
         runuser -l ci-user -c 'python /__w/pbf-scraping/pbf-scraping/analyses/full_dockets/download.py'
