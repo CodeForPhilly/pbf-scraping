@@ -19,8 +19,9 @@ jobs:
     - name: Stand up, look around
       run: |
         pwd
+        whoami
         python --version
-        firefox -v
+        sudo firefox -v
         geckodriver --version
     - name: Install Project Requirements
       run: |
