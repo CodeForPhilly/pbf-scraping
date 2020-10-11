@@ -17,9 +17,7 @@ jobs:
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
-      - run: |
-          su - ci-user
-      - uses: actions/checkout@v2
+      uses: actions/checkout@v2
     - name: Stand up, look around
       run: |
         pwd
@@ -33,4 +31,5 @@ jobs:
         pip install -r requirements.txt
     - name: Fetch and Parse Dockets
       run: |
+        chmod -R 777 .
         runuser -l ci-user -c 'python analyses/full_dockets/download.py'
