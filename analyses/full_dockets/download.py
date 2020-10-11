@@ -11,8 +11,9 @@ from parse_docket import *
 
 def download(docket_link, court_link, docketNumber):
     #os.system('curl "'+link+'" >> downloads\\'+docketNumber+".pdf")
-    dockets_path = "./analyses/full_dockets/tmp/dockets/"
-    court_path   = "./analyses/full_dockets/tmp/court/"
+    dirname = os.path.dirname(__file__)
+    dockets_path = os.path.join(dirname, "analyses/full_dockets/tmp/dockets/")
+    court_path = os.path.join(dirname, "analyses/full_dockets/tmp/court/")
     dockets_file = dockets_path + docketNumber+'.pdf'
     court_file   = court_path + docketNumber+'.pdf'
 
@@ -33,7 +34,8 @@ def fetch():
     return scrape1.listOfDocketNumbers
 
 def fetch1():
-    file = "./analyses/full_dockets/august_sm.csv"
+    dirname = os.path.dirname(__file__)
+    file = os.path.join(dirname, "analyses/full_dockets/august_sm.csv")
     f = open(file, 'r')
     lines = f.readlines()
     new=[]
@@ -95,7 +97,9 @@ def main():
 
     driver.close()
     final = pd.DataFrame(parsed_results)
-    final.to_csv('./tmp/test.csv', index=False)
+    dirname = os.path.dirname(__file__)
+    filepath = os.path.join(dirname, "tmp/test.csv")
+    final.to_csv(filepath, index=False)
 
 if __name__=="__main__":
     main()
