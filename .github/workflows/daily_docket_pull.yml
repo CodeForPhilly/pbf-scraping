@@ -31,6 +31,14 @@ jobs:
       run: |
         chmod -R 777 .
         runuser -l ci-user -c 'python /__w/pbf-scraping/pbf-scraping/analyses/full_dockets/download.py'
-    - name: Upload Files To AWS
+    - name: Hey, any dockets in here?
       run: |
         ls -la analyses/full_dockets/tmp/dockets
+    - name: Sync Dockets With AWS S3
+        uses: jakejarvis/s3-sync-action@v0.5.1
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET: "pbf-pdf-dockets/data"
+          AWS_REGION: "us-east-1"
+          SOURCE_DIR: "analyses/full_dockets/tmp/dockets/"
