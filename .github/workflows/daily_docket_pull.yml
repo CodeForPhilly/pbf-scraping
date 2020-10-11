@@ -11,7 +11,9 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `daily-dockets` executes in
-    container: rayfallon/pbf-scraping:latest
+    container:
+      image: rayfallon/pbf-scraping:0.2
+      options: user --ci-user
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
@@ -20,6 +22,7 @@ jobs:
       run: |
         pwd
         whoami
+        cat /etc/os-release
         python --version
         geckodriver --version
     - name: Install Project Requirements
