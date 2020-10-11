@@ -98,7 +98,7 @@ def main():
     driver.close()
     final = pd.DataFrame(parsed_results)
     dirname = os.path.dirname(__file__)
-    filepath = os.path.join(dirname, "tmp/test.csv")
+    filepath = os.path.join(dirname, "tmp/ci_test.csv")
     final.to_csv(filepath, index=False)
 
 if __name__=="__main__":
