@@ -18,8 +18,10 @@ jobs:
       uses: actions/checkout@v2
     - name: Stand up, look around
       run: |
-        python --version
         pwd
+        python --version
+        firefox -v
+        geckodriver --version
     - name: Install Project Requirements
       run: |
         python -m pip install --upgrade pip
