@@ -11,9 +11,10 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `daily-dockets` executes in
-    container:
-      image: rayfallon/pbf-scraping:latest
-      options: user --ci-user
+    # container:
+    #   image: rayfallon/pbf-scraping:latest
+    #   options: user --ci-user
+    container: rayfallon/pbf-scraping:latest
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
