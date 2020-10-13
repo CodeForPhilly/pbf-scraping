@@ -41,4 +41,4 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_S3_BUCKET: "pbf-pdf-dockets/data"
         AWS_REGION: "us-east-1"
-        SOURCE_DIR: "analyses/full_dockets/tmp/"
+        SOURCE_DIR: "analyses/full_dockets/tmp/parsed_docket_data/"

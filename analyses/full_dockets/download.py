@@ -97,7 +97,8 @@ def main():
     driver.close()
     final = pd.DataFrame(parsed_results)
     dirname = os.path.dirname(__file__)
-    filepath = os.path.join(dirname, "tmp/ci_test.csv")
+    filepath = os.path.join(
+        dirname, "tmp/parsed_docket_data/docket-data-" + time.strftime("%Y-%m-%d-%H%M%S") + ".csv")
     final.to_csv(filepath, index=False)
 
 if __name__=="__main__":
