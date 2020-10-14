@@ -60,7 +60,7 @@ def fetch2(aws_access_key_id, aws_secret_access_key):
     engine = create_engine(conn_str)
     con = engine.connect()
 
-    docket_id_query = 'SELECT A.docket_number FROM new_criminal_filings as A LEFT OUTER JOIN dockets_parsed_raw as B on A.docket_number = B.docket_no WHERE B.docket_no is null LIMIT 3'
+    docket_id_query = 'SELECT DISTINCT A.docket_number FROM new_criminal_filings as A LEFT OUTER JOIN dockets_parsed_raw as B on A.docket_number = B.docket_no WHERE B.docket_no is null LIMIT 200'
     query_result = pd.read_sql(docket_id_query, con)
     docket_list = query_result['docket_number'].to_list()
     return docket_list
