@@ -1,10 +1,7 @@
 name: Fetch Parse & Upload Daily Docket Data
 
 
-on:
-  push:
-    branches: 
-      - 'feature/daily-analysis-ray'
+on: [workflow_dispatch]
 
 jobs:
   # Label of the container job
