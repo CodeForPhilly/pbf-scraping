@@ -44,6 +44,7 @@ jobs:
           echo '::set-env name=day_of_week::'$(date -d $scrape_date +%A)
         env:
           LISTSERV: ${{ secrets.LISTSERV }}
+        working-directory: './'
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v2
