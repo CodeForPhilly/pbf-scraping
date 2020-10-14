@@ -23,11 +23,11 @@ dotenv.load_dotenv()
 config = {
     "AWS_ACCESS_KEY_ID": os.environ["AWS_ACCESS_KEY_ID"],
     "AWS_SECRET_ACCESS_KEY": os.environ["AWS_SECRET_ACCESS_KEY"],
-    "REGION_NAME": os.environ["REGION_NAME"],
+    "AWS_REGION": os.environ["AWS_REGION"],
     "SCHEMA_NAME": os.environ["SCHEMA_NAME"],
     "S3_STAGING_DIR": os.environ["S3_STAGING_DIR"],
          }
-conn_str = "awsathena+rest://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@athena.{REGION_NAME}.amazonaws.com:443/"\
+conn_str = "awsathena+rest://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@athena.{AWS_REGION}.amazonaws.com:443/"\
            "{SCHEMA_NAME}?s3_staging_dir={S3_STAGING_DIR}".format(**config)
 engine = create_engine(conn_str)
 
