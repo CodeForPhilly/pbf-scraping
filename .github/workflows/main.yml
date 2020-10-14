@@ -53,6 +53,7 @@ jobs:
           cd analyses/ncf_scraping
       - name: Scrape data
         run: |
+          ls
           make output/"$scrape_date".csv output/"$scrape_date"_anonymized.csv
       - name: Parse data (daily)
         run: |
