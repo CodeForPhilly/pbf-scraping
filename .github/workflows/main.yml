@@ -38,7 +38,7 @@ jobs:
             echo '::set-env name=email::'"${{ env.LISTSERV }}"
           fi
 
-        echo '::set-env name=day_of_week::'$(date -d $scrape_date +%A)
+          echo '::set-env name=day_of_week::'$(date -d $scrape_date +%A)
         env:
           LISTSERV: ${{ secrets.LISTSERV }}
       - uses: actions/checkout@v2
