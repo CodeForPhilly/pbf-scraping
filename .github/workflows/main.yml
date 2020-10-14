@@ -66,6 +66,11 @@ jobs:
           start_date=$(date +%Y-%m-%d -d $scrape_date -d '7 days ago')
           python 2_query_between.py "$start_date" "$scrape_date" > weekly.csv
           python 1a_parse.py weekly.csv
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET: "pbf-new-criminal-filings"
+          AWS_REGION: "us-east-1"
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
         if: ${{ env.email && github.ref == 'master' }}
