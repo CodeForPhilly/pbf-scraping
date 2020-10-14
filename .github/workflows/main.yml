@@ -61,7 +61,8 @@ jobs:
       - name: Parse data (weekly)
         if: ${{ env.day_of_week == 'sunday' }}
         run: |
-          echo "TODO: send sunday email"
+          start_date=$(date -d $scrape_date -d '7 days ago')
+          echo "$start_date" "$scrape_date"
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
         if: ${{ env.email && github.ref == 'master' }}
