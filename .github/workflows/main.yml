@@ -58,7 +58,7 @@ jobs:
         run: |
           python 1a_parse.py output/"$scrape_date".csv > email_body.txt
       - name: Parse data (weekly)
-        if: ${{ day_of_week == 'sunday' }}
+        if: ${{ env.day_of_week == 'sunday' }}
         run: |
           echo "TODO: send sunday email"
       - name: Send mail
