@@ -30,7 +30,7 @@ jobs:
     - name: Fetch and Parse Dockets
       run: |
         chmod -R 777 .
-        runuser -l ci-user -c 'python /__w/pbf-scraping/pbf-scraping/analyses/full_dockets/download.py'
+        runuser -l ci-user -c 'python /__w/pbf-scraping/pbf-scraping/analyses/full_dockets/download.py ${{ secrets.AWS_ACCESS_KEY_ID }} ${{ secrets.AWS_SECRET_ACCESS_KEY }}'
     - name: Hey, any dockets in here?
       run: |
         ls -la analyses/full_dockets/tmp/dockets

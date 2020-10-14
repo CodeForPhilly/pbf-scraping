@@ -5,6 +5,8 @@ import requests
 import time
 import os
 import pandas as pd
+import sys
+from sqlalchemy import create_engine
 from funcs_parse import *
 from parse_docket import *
 
@@ -44,10 +46,30 @@ def fetch1():
     print(new)
     return new
 
+def fetch2(aws_access_key_id, aws_secret_access_key):
+    config = {
+        "AWS_ACCESS_KEY_ID": aws_access_key_id,
+        "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
+        "REGION_NAME": "us-east-1",
+        "SCHEMA_NAME": "ncf",
+        "S3_STAGING_DIR": "s3://pbf-athena-1/"
+    }
+    conn_str = "awsathena+rest://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@athena.{REGION_NAME}.amazonaws.com:443/{SCHEMA_NAME}?s3_staging_dir={S3_STAGING_DIR}".format(
+    **config)
+
+    engine = create_engine(conn_str)
+    con = engine.connect()
+
+    docket_id_query = 'SELECT A.docket_number FROM new_criminal_filings as A LEFT OUTER JOIN dockets_parsed_raw as B on A.docket_number = B.docket_no WHERE B.docket_no is null LIMIT 3'
+    query_result = pd.read_sql(docket_id_query, con)
+    docket_list = query_result['docket_number'].to_list()
+    return docket_list
+
 def main():
     #docketNumbers=["MC-51-CR-0016015-2020","MC-51-CR-0016016-2020","MC-51-CR-0016017-2020","MC-51-CR-0016018-2020"]
     #fetch1()
-    docketNumbers=fetch1()
+    docketNumbers = fetch2(str(sys.argv[1]), str(sys.argv[2]))
+
     print(len(docketNumbers))
     print(docketNumbers)
     fireFoxOptions = webdriver.FirefoxOptions()
