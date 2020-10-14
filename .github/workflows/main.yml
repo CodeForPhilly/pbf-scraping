@@ -11,6 +11,10 @@ on:
         required: true
       email:
         description: 'Email to'
+  push:
+    branches:
+      - 'feat-weekly-email'
+
 
 jobs:
   build:
@@ -33,6 +37,8 @@ jobs:
           else
             echo '::set-env name=email::'"${{ env.LISTSERV }}"
           fi
+
+        echo '::set-env name=day_of_week::'$(date -d $scrape_date +%A)
         env:
           LISTSERV: ${{ secrets.LISTSERV }}
       - uses: actions/checkout@v2
@@ -42,15 +48,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Switch into scraping directory
+        run: |
+          cd analyses/ncf_scraping
       - name: Scrape data
         run: |
           make output/"$scrape_date".csv output/"$scrape_date"_anonymized.csv
-      - name: Parse data
+      - name: Parse data (daily)
         run: |
           python 1a_parse.py output/"$scrape_date".csv > email_body.txt
+      - name: Parse data (weekly)
+        if: ${{ day_of_week == 'sunday' }}
+        run: |
+          echo "TODO: send sunday email"
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
-        if: ${{ env.email }}
+        if: ${{ env.email && github.ref == 'master' }}
         with:
           server_address: smtp.gmail.com
           server_port: 465
