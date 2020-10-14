@@ -31,22 +31,7 @@ def download(docket_link, court_link, docketNumber):
         f.write(r_pdf.content)
     return parse
 
-def fetch():
-    scrape1.main()
-    return scrape1.listOfDocketNumbers
-
-def fetch1():
-    dirname = os.path.dirname(__file__)
-    file = os.path.join(dirname, "august_sm.csv")
-    f = open(file, 'r')
-    lines = f.readlines()
-    new=[]
-    for line in lines:
-        new.append(line[:-1])
-    print(new)
-    return new
-
-def fetch2(aws_access_key_id, aws_secret_access_key):
+def fetch_docket_numbers(aws_access_key_id, aws_secret_access_key):
     config = {
         "AWS_ACCESS_KEY_ID": aws_access_key_id,
         "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
@@ -66,11 +51,9 @@ def fetch2(aws_access_key_id, aws_secret_access_key):
     return docket_list
 
 def main():
-    #docketNumbers=["MC-51-CR-0016015-2020","MC-51-CR-0016016-2020","MC-51-CR-0016017-2020","MC-51-CR-0016018-2020"]
-    #fetch1()
-    docketNumbers = fetch2(str(sys.argv[1]), str(sys.argv[2]))
+    docketNumbers = fetch_docket_numbers(str(sys.argv[1]), str(sys.argv[2]))
 
-    print(len(docketNumbers))
+    print('docketNumber count: ' + str(len(docketNumbers)))
     print(docketNumbers)
     fireFoxOptions = webdriver.FirefoxOptions()
     fireFoxOptions.headless=True
@@ -126,4 +109,3 @@ def main():
 
 if __name__=="__main__":
     main()
-    #fetch1()
