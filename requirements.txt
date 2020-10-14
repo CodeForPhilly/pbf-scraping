@@ -34,7 +34,7 @@ jupyter-client==6.1.7
 jupyter-core==4.6.3
 jupytext==1.6.0
 kiwisolver==1.2.0
-m3-libxml2-python==2.6.9
+plone.recipe.lxml==0.4
 lxml==4.5.2
 markdown-it-py==0.5.2
 MarkupSafe==1.1.1
