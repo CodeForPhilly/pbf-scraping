@@ -63,8 +63,9 @@ jobs:
       - name: Parse data (weekly)
         if: ${{ env.day_of_week == 'tuesday' }}
         run: |
-          start_date=$(date -d $scrape_date -d '7 days ago')
-          echo "$start_date" "$scrape_date"
+          start_date=$(date +%Y-%m-%d -d $scrape_date -d '7 days ago')
+          python 2_query_between.py "$start_date" "$scrape_date" > weekly.csv
+          python 1a_parse.py weekly.csv
       - name: Send mail
         uses: dawidd6/action-send-mail@v2
         if: ${{ env.email && github.ref == 'master' }}
