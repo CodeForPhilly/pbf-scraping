@@ -74,7 +74,7 @@ jobs:
           body: file://email_body.txt
           to: ${{ secrets.LISTSERV }}
           from: ${{ secrets.MAIL_USERNAME }}
-          attachments: ./output/${{ env.scrape_date }}.csv
+          attachments: analyses/ncf_scraping/output/${{ env.scrape_date }}.csv
       - name: Delete non-anonymized data
         run: |
           rm output/"$scrape_date".csv
@@ -85,4 +85,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_S3_BUCKET: "pbf-new-criminal-filings"
           AWS_REGION: "us-east-1"
-          SOURCE_DIR: "output/"
+          SOURCE_DIR: "analyses/ncf_scraping/output/"
