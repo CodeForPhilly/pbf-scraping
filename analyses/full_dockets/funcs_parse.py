@@ -26,7 +26,7 @@ def find_pages(filename, string):
     return pages
 
 
-def offense(pdf,page,y_bottom,y_top, x0, x1,charges,delta = 5):
+def offense(pdf,page,y_bottom,y_top, x0, x1,x2,charges,delta = 5):
     n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 70, y_top)).text()
     n_lines = n_lines.split(' ')
     n = len(n_lines)
@@ -65,8 +65,11 @@ def offense(pdf,page,y_bottom,y_top, x0, x1,charges,delta = 5):
     for y0, y1 in zip(y_array_bottom,y_array_top):
         data = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x0, y0, x1, y1)).text()
         charges.append(data)
+        date = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x1, y0, x2, y1)).text()
+        charges.append(data)
+        
     
-    return charges
+    return charges,date
 
 def bail_set(pdf,page,y_bottom,y_top, x0, x1,bail,bail_type,delta = 5):
     n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 70, y_top)).text().split(' ')
@@ -110,8 +113,45 @@ def bail_set(pdf,page,y_bottom,y_top, x0, x1,bail,bail_type,delta = 5):
                 bail = bail_other
                 bail_type = 1
     return bail, bail_type
+
+def get_bail_info(pdf,pages):
+    bail_info = []
+    for p in pages:
+        info_1 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Bail Posting Status")'.format(p))
+        x1_0 = float(info_1.attr('x0'))
+        x1_1 = float(info_1.attr('x1'))
+        y1_0 = float(info_1.attr('y0'))
+        info_2 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Percentage")'.format(p))
+        x2_0 = float(info_2.attr('x0'))
+        x2_1 = float(info_2.attr('x1'))
+        info_3 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("CHARGES")'.format(p))
+        y3_1 = float(info_3.attr('y1'))
+        info_4 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Bail Action")'.format(p))
+        x4_1 = float(info_4.attr('x1'))
+        info_5 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Bail Type")'.format(p))
+        x5_0 = float(info_5.attr('x0'))
+        bail_date = pdf.pq('LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(p,x4_1, y3_1, x5_0, y1_0)).text()
+        bail_type = pdf.pq('LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(p,x5_0, y3_1, x2_0, y1_0)).text()
+        bail_date = bail_date.split(' ')[-1]
+        bail_type = bail_type.split(' ')[-1]
+        bail_info = pdf.pq('LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(p,x2_1, y3_1, x1_0, y1_0)).text()
+        bail_amount = float(bail_info.split('$')[-1].replace(',',''))
+        bail_paid = 0
+        check_posted = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(p,x1_0, y3_1, x1_1, y1_0)).text()
+        if 'Posted' in check_posted:
+            bail_paid = bail_amount*0.1
+    return bail_amount, bail_paid, bail_date, bail_type 
+
+def get_zip(pdf,page):
+    info_1 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Zip: ")'.format(page[0])).text()
+    zip_code = info_1.split(' ')[-1]
+    regnumber = re.compile(r'\d+')
+    if regnumber.search(zip_code) == None:
+        zip_code = ''
+    return zip_code
+
                  
-def get_bail(pdf,pages):
+def get_bail_set(pdf,pages):
     bail = []
     bail_type = 1 #0: Bail Set, 1: Other e.g. Bail Posted, changed, denied...
     for p in pages:
@@ -137,31 +177,9 @@ def get_charges(pdf,pages):
         y2_1 = float(info_2.attr('y1'))
         info_3 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Offense Dt")'.format(p))
         x3_0 = float(info_3.attr('x0'))
-        charges = offense(pdf,p,y2_1,y1_0,x1_0,x3_0,charges)
-    return charges
-
-def get_bail_re(sections):
-    pattern_bailset0 = r"\s\d{2}\/\d{2}\/\d{5}(.*)Bail Set"
-    pattern_bailset1 = r"\s\d{2}\/\d{2}\/\d{4} \d{1}(.*)Bail Set"
-    pattern_bailset2 = r"By\d{2}\/\d{2}\/\d{5}(.*)Bail Set"
-    pattern_bailset3 = r"By\d{2}\/\d{2}\/\d{5}(.*)"
-    pattern_bailset4 = r"\s\d{2}\/\d{2}\/\d{5}(.*)"
+        info_4 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("OTN")'.format(p))
+        x4_0 = float(info_4.attr('x0'))
+        charges,date = offense(pdf,p,y2_1,y1_0,x1_0,x3_0,x4_0,charges)
+    return charges, date
 
 
-    bailset =  re.findall(pattern_bailset0, sections, re.DOTALL)
-    if len(bailset) == 0:
-        bailset = re.findall(pattern_bailset1, sections, re.DOTALL)
-        if len(bailset) == 0:
-            bailset = re.findall(pattern_bailset2, sections, re.DOTALL)
-            if len(bailset) == 0:
-                bailset = ''
-            else:
-                if re.search(pattern_bailset3, bailset[0], re.DOTALL):
-                    bailset = re.findall(pattern_bailset3, bailset[0], re.DOTALL)
-                if re.search(pattern_bailset4, bailset[0], re.DOTALL):
-                    bailset = re.findall(pattern_bailset4, bailset[0], re.DOTALL)
-    else:
-        if re.search('(.*)Bail Set',bailset[0],re.DOTALL):
-            bailset = re.findall('(.*)Bail Set',bailset[0],re.DOTALL)
-  
-    return bailset

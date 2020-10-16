@@ -6,6 +6,7 @@ import numpy as np
 import time
 from funcs_parse import *
 import argparse
+import pandas as pd
 
 
 
@@ -99,8 +100,10 @@ def parse_pdf(filename,text):
         sections[pattern[0]] = re.findall(pattern[1], text, re.DOTALL)[0].strip()
         
     pages_charges = find_pages(filename,'Statute Description')
-    pages_bail = find_pages(filename,'Filed By')
-    pages = list(set(pages_charges+pages_bail))
+    pages_bail_set = find_pages(filename,'Filed By')
+    pages_bail_info = find_pages(filename,'Bail Posting Status')
+    pages_zip = find_pages(filename,'Zip:')
+    pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_zip))
     pdf = pdfquery.PDFQuery(filename)
     pdf.load(pages)
         
@@ -110,7 +113,8 @@ def parse_pdf(filename,text):
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     ### Offenses ###
-    result['offenses'] = get_charges(pdf, pages_charges)
+    result['offenses'] = get_charges(pdf, pages_charges)[0]
+    result['offense_date'] = get_charges(pdf, pages_charges)[1]
     ### Arrest Date ###
     pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
     result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
@@ -132,11 +136,16 @@ def parse_pdf(filename,text):
  
     else:
         result['attorney'] = ''
-    ## Date of Birth ###
+    ## Defendant Information ###
     pattern_dob = r"Date Of Birth:(.*?)City"
     result['dob'] = re.findall(pattern_dob, sections['defendant'], re.DOTALL)[0].strip()
-    ## Magistrate Name (Bail Set by) ###
-    result['bail_set_by'] = get_bail(pdf,pages_bail)
+    result['zip'] = get_zip(pdf, pages_zip)
+    ## Bail Information ###
+    result['bail_set_by'] = get_bail_set(pdf,pages_bail_set)
+    result['bail_amount'] = get_bail_info(pdf, pages_bail_info)[0]
+    result['bail_paid'] = get_bail_info(pdf, pages_bail_info)[1]
+    result['bail_date'] = get_bail_info(pdf, pages_bail_info)[2]
+    result['bail_type'] = get_bail_info(pdf, pages_bail_info)[3]
     ## Preliminary Details ###
     pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
     prelim = re.findall(pattern_prelim, sections['calendar'], re.DOTALL)
@@ -145,28 +154,32 @@ def parse_pdf(filename,text):
     ###  Uncomment to print a section during development
     ###  so we can build RegEx using online tools because RegEx is hard
     ###  https://regex101.com/r/12KSAf/1/
-    #print(sections['status'])
-    #print(result['bail_set_by'])
     return result
 
 
-
-def main(path):
-    for enu,file in enumerate(os.listdir(path)):
+def main(folder, output_name):
+    parsed_results = []
+    for enu,file in enumerate(os.listdir(folder)):
         try:
-            print(enu,file)
+            print(enu, file)
             text = scrape_pdf(path_folder+file)
-            parse = parse_pdf(path_folder+file,text)
+            data = parse_pdf(path_folder+file,text)
+            parsed_results.append(data)
         except:
             print('Failed: ',file)
+        
 
+    final = pd.DataFrame(parsed_results)
+    final.to_csv(output_name+'.csv', index=False)
 
 if __name__ == "__main__":
     path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/dockets/'
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path', default= path_folder,
+    parser.add_argument('-p','--path_folder', default= path_folder,
+                        help='Path to folder with PDFs')
+    parser.add_argument('-o','--output_name', default= 'output',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
-    main(args.path)
+    main(args.path_folder,args.output_name)
 
