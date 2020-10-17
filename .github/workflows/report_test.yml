@@ -16,7 +16,7 @@ jobs:
     container: 
       image: rayfallon/pbf-scraping:latest
       volumes:
-        ./analyses:__w/pbf-scraping/pbf-scraping/analyses
+        - ./analyses:__w/pbf-scraping/pbf-scraping/analyses
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
