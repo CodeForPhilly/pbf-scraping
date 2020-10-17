@@ -8,10 +8,10 @@ on:
 
 jobs:
   # Label of the container job
-  daily-dockets:
+  build-report:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    # Docker Hub image that `daily-dockets` executes in
+    # Docker Hub image that `build-report` executes in
     # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
     container: rayfallon/pbf-scraping:latest
     steps:
@@ -31,6 +31,9 @@ jobs:
         REGION_NAME: ${{ secrets.REGION_NAME }}
         S3_STAGING_DIR: ${{ secrets.S3_STAGING_DIR }}
         SCHEMA_NAME: ${{ secrets.SCHEMA_NAME }}
+  publish-report:
+    runs-on: ubuntu-latest
+    steps:
     - name: Deploy to gh pages
       uses: peaceiris/actions-gh-pages@v3.6.4
       with:

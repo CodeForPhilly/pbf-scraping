@@ -12,10 +12,10 @@ on:
 
 jobs:
   # Label of the container job
-  daily-dockets:
+  main:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    # Docker Hub image that `daily-dockets` executes in
+    # Docker Hub image that `main` executes in
     # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
     container: rayfallon/pbf-scraping:latest
     steps:
