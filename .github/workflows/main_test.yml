@@ -2,9 +2,13 @@ name: Try to run "Main" Action In Container
 
 
 on:
-  push:
-    branches: 
-      - 'bugfix/main-in-container'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date (e.g. 2020-01-31)'     
+        required: true
+      email:
+        description: 'Email to'
 
 jobs:
   # Label of the container job
