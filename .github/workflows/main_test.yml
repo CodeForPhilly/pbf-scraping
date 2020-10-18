@@ -1,0 +1,77 @@
+name: Try to run "Main" Action In Container
+
+
+on:
+  schedule: 
+    # Runs every day at 6am EDT (cron in UTC)
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date (e.g. 2020-01-31)'     
+        required: true
+      email:
+        description: 'Email to'
+
+
+jobs:
+  # Label of the container job
+  main:
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    # Docker Hub image that `main` executes in
+    # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
+    container: rayfallon/pbf-scraping:latest
+    steps:
+    # Downloads a copy of the code in your repository before running CI tests
+    - name: Check out repository code
+      uses: actions/checkout@v2
+    - name: Install Project Requirements
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Set env
+      run: |
+        if [ -n "${{ github.event.inputs.date }}" ]; then
+          echo '::set-env name=scrape_date::'"${{ github.event.inputs.date }}";
+        else
+          echo '::set-env name=scrape_date::'$(date +%Y-%m-%d -d '1 day ago');
+        fi
+
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo '::set-env name=email::'"${{ github.event.inputs.email }}";
+        else
+          echo '::set-env name=email::'"${{ env.LISTSERV }}"
+        fi
+      env:
+        LISTSERV: ${{ secrets.LISTSERV }}
+    - name: Scrape data
+      run: |
+        make output/"$scrape_date".csv output/"$scrape_date"_anonymized.csv
+    - name: Parse data
+      run: |
+        python 1a_parse.py output/"$scrape_date".csv > email_body.txt
+    - name: Send mail
+      uses: dawidd6/action-send-mail@v2
+      if: ${{ env.email }}
+      with:
+        server_address: smtp.mail.me.com
+        server_port: 587
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        subject: Bail Data
+        body: file://email_body.txt
+        to: ${{ secrets.LISTSERV }}
+        from: ${{ secrets.MAIL_USERNAME }}
+        attachments: ./output/${{ env.scrape_date }}.csv
+    - name: Delete non-anonymized data
+      run: |
+        rm output/"$scrape_date".csv
+    - name: S3 Sync
+      uses: jakejarvis/s3-sync-action@v0.5.1
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_S3_BUCKET: "pbf-new-criminal-filings"
+        AWS_REGION: "us-east-1"
+        SOURCE_DIR: "output/"
