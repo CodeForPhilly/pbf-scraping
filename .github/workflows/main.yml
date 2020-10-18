@@ -1,9 +1,9 @@
 name: Main
 
 on:
-  schedule: 
+ # schedule: 
     # Runs every day at 6am EDT (cron in UTC)
-    - cron: '0 10 * * *'
+  #  - cron: '0 10 * * *'
   workflow_dispatch:
     inputs:
       date:
