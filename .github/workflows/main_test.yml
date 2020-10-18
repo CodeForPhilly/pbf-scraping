@@ -2,6 +2,9 @@ name: Try to run "Main" Action In Container
 
 
 on:
+  schedule: 
+    # Runs every day at 6am EDT (cron in UTC)
+    - cron: '0 10 * * *'
   workflow_dispatch:
     inputs:
       date:
@@ -9,6 +12,7 @@ on:
         required: true
       email:
         description: 'Email to'
+
 
 jobs:
   # Label of the container job
