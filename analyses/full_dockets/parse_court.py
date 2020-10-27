@@ -13,13 +13,14 @@ import pandas as pd
 
 
 
-def parse_pdf(filename):
-    pdf = pdfquery.PDFQuery(filename)
+def parse_pdf(path_folder,filename):
+    pdf = pdfquery.PDFQuery(path_folder+filename)
     pdf.load()
 
     info_sex = pdf.pq('LTTextLineHorizontal:contains("Sex:")').text()
     info_race = pdf.pq('LTTextLineHorizontal:contains("Race:")').text()
     result = {}
+    result['docket_no'] = filename.split('.pdf')[0]
     result['sex'] = info_sex.split('Sex:')[1]
     result['race'] = info_race.split('Race: ')[1]
  
@@ -28,10 +29,10 @@ def parse_pdf(filename):
 
 def main(folder, output_name):
     parsed_results = []
-    for enu,file in enumerate(os.listdir(folder)):
+    for enu,file in enumerate(os.listdir(folder)[0:10]):
         try:
             print(enu, file)
-            data = parse_pdf(path_folder+file)
+            data = parse_pdf(path_folder,file)
             parsed_results.append(data)
         except:
             print('Failed: ',file)
