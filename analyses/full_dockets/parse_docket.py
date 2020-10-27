@@ -113,8 +113,7 @@ def parse_pdf(filename,text):
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     ### Offenses ###
-    result['offenses'] = get_charges(pdf, pages_charges)[0]
-    result['offense_date'] = get_charges(pdf, pages_charges)[1]
+    result['offenses'],result['offense_date'] = get_charges(pdf, pages_charges)
     ### Arrest Date ###
     pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
     result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
@@ -142,10 +141,8 @@ def parse_pdf(filename,text):
     result['zip'] = get_zip(pdf, pages_zip)
     ## Bail Information ###
     result['bail_set_by'] = get_bail_set(pdf,pages_bail_set)
-    result['bail_amount'] = get_bail_info(pdf, pages_bail_info)[0]
-    result['bail_paid'] = get_bail_info(pdf, pages_bail_info)[1]
-    result['bail_date'] = get_bail_info(pdf, pages_bail_info)[2]
-    result['bail_type'] = get_bail_info(pdf, pages_bail_info)[3]
+    result['bail_amount'],result['bail_paid'],result['bail_date'],result['bail_type'] = get_bail_info(pdf, pages_bail_info)
+
     ## Preliminary Details ###
     pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
     prelim = re.findall(pattern_prelim, sections['calendar'], re.DOTALL)
@@ -166,6 +163,7 @@ def main(folder, output_name):
             data = parse_pdf(path_folder+file,text)
             parsed_results.append(data)
         except:
+            print(enu, file)
             print('Failed: ',file)
         
 
@@ -177,7 +175,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-p','--path_folder', default= path_folder,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output',
+    parser.add_argument('-o','--output_name', default= 'output_dockets',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()

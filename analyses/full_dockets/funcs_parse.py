@@ -26,53 +26,62 @@ def find_pages(filename, string):
     return pages
 
 
-def offense(pdf,page,y_bottom,y_top, x0, x1,x2,charges,delta = 5):
-    n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 70, y_top)).text()
+def offense(pdf,page,y_bottom,y_top, x0, x1,x2,charges,date,delta = 5):
+    
+    n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 80, y_top)).text()
     n_lines = n_lines.split(' ')
     n = len(n_lines)
-    h = 0
-    if len(charges) > 0:
-        h = 1
-        if charges[0] == '':
-            charges = []
-            h = 0
-    y_array_bottom = np.zeros(n)
-    y_array_top = np.zeros(n)
-    k = 1
-    y = y_top  
-    while y > y_bottom:
-        y = y-delta
-        info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,y,70,y_top)).text().split(' ')
-        if len(info[0]) > 0:
-            if int(info[-1]) == k:
-                y_array_bottom[k-1-h] = y
-            else:
-                if k <= n:
-                    k = k+1
-    k = n+h
-    y = y_bottom
-    for i in range(int((y_top-y_bottom)/delta)):
-        y = y+delta
-        info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,y_bottom,70,y)).text()   
-        info = (re.sub("\s+", ",", info.strip())).split(',')
-        if len(info[0]) > 0:
-            if k in [int(i) for i in info]  :
-                y_array_top[k-1-h] = y
-                k = k-1
-          
-    y_array_top[0] = y_top
-    y_array_bottom[-1] = y_bottom
-    for y0, y1 in zip(y_array_bottom,y_array_top):
-        data = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x0, y0, x1, y1)).text()
-        charges.append(data)
-        date = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x1, y0, x2, y1)).text()
-        charges.append(data)
-        
+    if n_lines[0] == '':
+        charges,date = charges,date
+    else:
+        n_offenses =[int(x) for x in n_lines]
+        n = len(n_offenses)
+        h = 0
+        if len(charges) > 0:
+            h = 1
+            if charges[0] == '':
+                charges = []
+                h = 0
+        y_array_bottom = np.zeros(n)
+        y_array_top = np.zeros(n)
+        k = 0
+        y = y_top  
+        while y > y_bottom:
+            y = y-delta
+            info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,y,70,y_top)).text().split(' ')
+            if len(info[0]) > 0:
+                if int(info[-1]) == n_offenses[k]:
+                    y_array_bottom[k-h] = y
+                else:
+                    if k <= n-1:
+                        k = k+1
+        #k = n_offenses[-1]+h
+        y = y_bottom
+        index = 0
+        a = 0
+        for i in range(int((y_top-y_bottom)/delta)):
+            if abs(a-1) > len(n_offenses):
+                break
+            y = y + delta
+            info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,y_bottom,70,y)).text()   
+            info = (re.sub("\s+", ",", info.strip())).split(',')
+            if len(info[0]) > 0:
+                if n_offenses[a-1] in [int(x) for x in info]  :
+                    y_array_top[-index-1] = y
+                    index = index+1
+                    a = a-1
+                    
+        y_array_top[0] = y_top
+        y_array_bottom[-1] = y_bottom
+        for y0, y1 in zip(y_array_bottom,y_array_top):
+            data = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x0, y0, x1, y1)).text()
+            charges.append(data)
+            date = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,x1, y0, x2, y1)).text()
     
     return charges,date
 
 def bail_set(pdf,page,y_bottom,y_top, x0, x1,bail,bail_type,delta = 5):
-    n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 70, y_top)).text().split(' ')
+    n_lines = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page,0, y_bottom, 60, y_top)).text().split(' ')
     n = len(n_lines)
     y_array_bottom = np.zeros(n)
     y_array_top = np.zeros(n)
@@ -81,7 +90,7 @@ def bail_set(pdf,page,y_bottom,y_top, x0, x1,bail,bail_type,delta = 5):
     new_y_bottom = y_bottom
     while (y < y_top) & (k<=n):
         y = y+delta
-        info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,new_y_bottom,70,y)).text()   
+        info = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{},{},{},{}")'.format(page,0,new_y_bottom,60,y)).text()   
         if len(info) > 0:
             if int(info[0]) == int(n_lines[-1-(k-1)]):
                 y_array_top[-1-(k-1)] = y
@@ -125,6 +134,7 @@ def get_bail_info(pdf,pages):
         x2_0 = float(info_2.attr('x0'))
         x2_1 = float(info_2.attr('x1'))
         info_3 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("CHARGES")'.format(p))
+        if len(info_3) == 0: info_3 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("CPCMS")'.format(p))
         y3_1 = float(info_3.attr('y1'))
         info_4 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Bail Action")'.format(p))
         x4_1 = float(info_4.attr('x1'))
@@ -168,6 +178,7 @@ def get_bail_set(pdf,pages):
 def get_charges(pdf,pages):
 
     charges = []
+    date = ''
     for p in pages:
         info_1 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Statute Description")'.format(p))
         x1_0 = float(info_1.attr('x0'))
@@ -177,9 +188,9 @@ def get_charges(pdf,pages):
         y2_1 = float(info_2.attr('y1'))
         info_3 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("Offense Dt")'.format(p))
         x3_0 = float(info_3.attr('x0'))
-        info_4 = pdf.pq('LTPage[page_index="{}"] LTTextLineHorizontal:contains("OTN")'.format(p))
-        x4_0 = float(info_4.attr('x0'))
-        charges,date = offense(pdf,p,y2_1,y1_0,x1_0,x3_0,x4_0,charges)
+        x3_1 = float(info_3.attr('x1'))+10
+        charges,date = offense(pdf,p,y2_1,y1_0,x1_0,x3_0,x3_1,charges,date)
+        
     return charges, date
 
 
