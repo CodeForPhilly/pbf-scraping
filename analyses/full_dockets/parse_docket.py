@@ -163,7 +163,6 @@ def main(folder, output_name):
             data = parse_pdf(path_folder+file,text)
             parsed_results.append(data)
         except:
-            print(enu, file)
             print('Failed: ',file)
         
 
@@ -171,11 +170,11 @@ def main(folder, output_name):
     final.to_csv(output_name+'.csv', index=False)
 
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/dockets/'
+    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/'#'downloads/dockets/'
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-p','--path_folder', default= path_folder,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output_dockets',
+    parser.add_argument('-o','--output_name', default= 'output_sample',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
