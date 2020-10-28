@@ -41,12 +41,20 @@ def main():
     #Get all where bail was posted
     all_posted = all_cash_bail[all_cash_bail['Bail Status'].fillna("").str.contains('Posted')]
     total_posted = len(all_posted)
-    percentage_posted = int((total_posted / total_cash_bail) * 100)
+
+    if total_cash_bail != 0:
+        percentage_posted = int((total_posted / total_cash_bail) * 100)
+    else:
+        percentage_posted = 0
 
     #Get all with Public Defender
     all_defenders = all_cash_bail[all_cash_bail['Represented'].str.contains('Defender Association', na=False)]
     total_defenders = len(all_defenders)
-    percentage_defenders = int((total_defenders / total_cash_bail) * 100)
+
+    if total_cash_bail != 0:
+        percentage_defenders = int((total_defenders / total_cash_bail) * 100)
+    else:
+        percentage_defenders = 0
 
     #Get just bail amounts
     all_cash_bail_amounts = all_cash_bail['Bail Amount']
