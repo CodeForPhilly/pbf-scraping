@@ -113,7 +113,7 @@ def parse_pdf(filename,text):
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     ### Offenses ###
-    result['offenses'],result['offense_date'] = get_charges(pdf, pages_charges)
+    result['offenses'],result['offense_date'],result['statute'] = get_charges(pdf, pages_charges)
     ### Arrest Date ###
     pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
     result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
@@ -153,8 +153,9 @@ def parse_pdf(filename,text):
     ###  https://regex101.com/r/12KSAf/1/
     return result
 
-
 def main(folder, output_name):
+
+
     parsed_results = []
     for enu,file in enumerate(os.listdir(folder)):
         try:
@@ -164,17 +165,16 @@ def main(folder, output_name):
             parsed_results.append(data)
         except:
             print('Failed: ',file)
-        
 
     final = pd.DataFrame(parsed_results)
     final.to_csv(output_name+'.csv', index=False)
 
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/'#'downloads/dockets/'
+    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/failed_dockets/'
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('-p','--path_folder', default= path_folder,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output_sample',
+    parser.add_argument('-o','--output_name', default= 'output',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
