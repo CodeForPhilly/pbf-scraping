@@ -4,7 +4,7 @@ name: Try to run "Report Website" Action In Container
 on:
   push:
     branches: 
-      - 'bugfix/main-in-container'
+      - 'bugfix/report-in-container'
 
 jobs:
   # Label of the container job
