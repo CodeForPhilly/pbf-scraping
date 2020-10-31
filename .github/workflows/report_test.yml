@@ -42,8 +42,9 @@ jobs:
     steps:
     - name: Debug
       run: |
-        ls
-        ls analyses
+        ls -la
+        ls /home/runner/work/pbf-scraping/pbf-scraping/analyses
+        pwd
     - name: Deploy to gh pages
       uses: peaceiris/actions-gh-pages@v3.6.4
       with:
