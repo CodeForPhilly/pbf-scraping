@@ -16,7 +16,7 @@ jobs:
     container: 
       image: rayfallon/pbf-scraping:latest
       volumes:
-        - analyses:/__w/pbf-scraping/pbf-scraping/analyses
+        - analyses:/analyses
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
@@ -28,6 +28,8 @@ jobs:
     - name: Build report
       run: |
         make analyses/ncf_report/report.html
+        rm -rf /analyses/*
+        cp analyses/* /analyses/ -r
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
