@@ -38,12 +38,14 @@ jobs:
         REGION_NAME: ${{ secrets.REGION_NAME }}
         S3_STAGING_DIR: ${{ secrets.S3_STAGING_DIR }}
         SCHEMA_NAME: ${{ secrets.SCHEMA_NAME }}
+        
   publish-report:
     needs: build-report
     runs-on: ubuntu-latest
     steps:
     - name: Debug
       run: |
+        ls -la
         pwd
     - name: Deploy to gh pages
       uses: peaceiris/actions-gh-pages@v3.6.4
