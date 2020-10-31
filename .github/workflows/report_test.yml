@@ -15,7 +15,7 @@ jobs:
     # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
     container: 
       image: rayfallon/pbf-scraping:latest
-      options: -v ./analyses:/analyses
+      options: -v analyses:/analyses
 
     steps:
     # Downloads a copy of the code in your repository before running CI tests
