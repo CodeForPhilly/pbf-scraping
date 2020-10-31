@@ -33,18 +33,18 @@ jobs:
         cp analyses/* /analyses/ -r
         ls analyses
         ls /analyses
-        
-    - name: Upload analyses folder
-      uses: actions/upload-artifact@v2
-      with:
-        name: analyses
-        path: analyses
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         REGION_NAME: ${{ secrets.REGION_NAME }}
         S3_STAGING_DIR: ${{ secrets.S3_STAGING_DIR }}
-        SCHEMA_NAME: ${{ secrets.SCHEMA_NAME }}
+        SCHEMA_NAME: ${{ secrets.SCHEMA_NAME }}    
+    - name: Upload analyses folder
+      uses: actions/upload-artifact@v2
+      with:
+        name: analyses
+        path: analyses
+
         
   publish-report:
     needs: build-report
