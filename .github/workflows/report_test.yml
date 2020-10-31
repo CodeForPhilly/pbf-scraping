@@ -15,7 +15,8 @@ jobs:
     # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
     container: 
       image: rayfallon/pbf-scraping:latest
-      options: -v analyses:/analyses
+      volumes: 
+      - analyses:/analyses
 
     steps:
     # Downloads a copy of the code in your repository before running CI tests
@@ -32,6 +33,12 @@ jobs:
         cp analyses/* /analyses/ -r
         ls analyses
         ls /analyses
+        
+    - name: Upload analyses folder
+      uses: actions/upload-artifact@v2
+      with:
+        name: analyses
+        path: analyses
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -43,6 +50,10 @@ jobs:
     needs: build-report
     runs-on: ubuntu-latest
     steps:
+    - name: Download artifact from "build-report" job
+      uses: actions/download-artifact@v2
+      with:
+        name: analyses
     - name: Debug
       run: |
         ls -la
