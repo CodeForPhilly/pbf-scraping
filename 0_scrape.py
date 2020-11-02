@@ -42,8 +42,9 @@ def main(record_date = None, out = None):
 
     # This list will hold the scraped data from each page
     scraped_list_per_page = []
-    # The current page is 1 and the end page as of now is 3 (this needs to be manually checked)
-    curr_page_num, end_page = (1,3)
+    # The current page is 1 and the end page as of now is 50. This is arbitrary, but it is unlikely that there would be more than 50 pages. 
+    # Going past the actual qty of pages returned in a search just loads a page with no criminal files
+    curr_page_num, end_page = (1,50)
     # Starting at the current page and stopping at the last page of the website
     for curr_page_num in range(end_page):
         # Take the current page number and increament it each iteration
@@ -61,6 +62,10 @@ def main(record_date = None, out = None):
         # After inspecting the source code I noticed the criminal files were listed under this specific div tag
         # The findAll function will grab each criminal file from that page
         list_of_criminal_filings = soup.findAll("div", {"class": "well well-sm"})
+        # if we don't get any criminal files, that means we have scraped all of the relevant pages
+        if len(list_of_criminal_filings) == 0:
+            break
+        
         # Then pass the list of all criminal fiilings into the extract_attributes function
         # After the extract_attributes function completes it will return a list of that whole page's scraped criminal
         # filings and then it will continue to the next page and at the end we will have one complete joined list
