@@ -12,8 +12,9 @@ import argparse
 import pandas as pd
 
 
-
-def parse_pdf(path_folder,filename):
+def parse_pdf(path_folder, filename):
+    ''' Parse sex and race from court summary PDF '''
+    
     pdf = pdfquery.PDFQuery(path_folder+filename)
     pdf.load()
 
@@ -29,10 +30,10 @@ def parse_pdf(path_folder,filename):
 
 def main(folder, output_name):
     parsed_results = []
-    for enu,file in enumerate(os.listdir(folder)[0:10]):
+    for i, file in enumerate(os.listdir(folder)[0:10]): # Why just the first ten?
         try:
-            print(enu, file)
-            data = parse_pdf(path_folder,file)
+            print(i, file)
+            data = parse_pdf(folder, file)
             parsed_results.append(data)
         except:
             print('Failed: ',file)
@@ -40,13 +41,16 @@ def main(folder, output_name):
 
     final = pd.DataFrame(parsed_results)
     final.to_csv(output_name+'.csv', index=False)
+    
+    return
+
 
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/court/'
+    cwd = os.path.join(os.path.dirname(__file__), '\test\sample')
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default= path_folder,
+    parser.add_argument('-p','--path_folder', default=cwd,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output_court',
+    parser.add_argument('-o','--output_name', default='output_court',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()

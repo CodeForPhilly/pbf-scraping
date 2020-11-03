@@ -1,13 +1,11 @@
 import pdfquery
 import PyPDF2
+import textract
 import re
 import os
-import numpy as np
-import time
-from funcs_parse import *
 import argparse
 import pandas as pd
-
+import funcs_parse as funcs
 
 
 def scrape_pdf(filename):
@@ -20,6 +18,7 @@ def scrape_pdf(filename):
     Returns: 
     text: Entire document as a string.
     """
+    
     FileObj = open(filename, 'rb')
     count = 0
     text = " "  
@@ -27,17 +26,19 @@ def scrape_pdf(filename):
     num_pages = pdfReader.numPages
     while count < num_pages:
         pageObj = pdfReader.getPage(count)
-        count+=1
+        count += 1
         text += pageObj.extractText()
         # check if anything was actually returned
         if text != "":
             text = text
         # use OCR to pull text if none was returned
         else:
-            text = textract.process(f, method='tesseract', language='eng')
+            text = textract.process(filename, method='tesseract', language='eng')
     # clean based on some basic rules
     text = clean_text(text)
     return text
+
+
 def clean_text(txt):
     """ 
     Cleans document text 
@@ -49,6 +50,7 @@ def clean_text(txt):
     txt: A cleaner version of the entire document which includes removal of
          headers, printed dates, and newline characters.
     """
+    
     replacements = [('\n', ' '),
                    ('CPCMS 9082', ''),
                    ('MUNICIPAL COURT OF PHILADELPHIA COUNTY', '')]
@@ -99,10 +101,10 @@ def parse_pdf(filename,text):
     for pattern in patternlist:
         sections[pattern[0]] = re.findall(pattern[1], text, re.DOTALL)[0].strip()
         
-    pages_charges = find_pages(filename,'Statute Description')
-    pages_bail_set = find_pages(filename,'Filed By')
-    pages_bail_info = find_pages(filename,'Bail Posting Status')
-    pages_zip = find_pages(filename,'Zip:')
+    pages_charges = funcs.find_pages(filename,'Statute Description')
+    pages_bail_set = funcs.find_pages(filename,'Filed By')
+    pages_bail_info = funcs.find_pages(filename,'Bail Posting Status')
+    pages_zip = funcs.find_pages(filename,'Zip:')
     pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_zip))
     pdf = pdfquery.PDFQuery(filename)
     pdf.load(pages)
@@ -113,7 +115,7 @@ def parse_pdf(filename,text):
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     ### Offenses ###
-    result['offenses'],result['offense_date'],result['statute'] = get_charges(pdf, pages_charges)
+    result['offenses'],result['offense_date'],result['statute'] = funcs.get_charges(pdf, pages_charges)
     ### Arrest Date ###
     pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
     result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
@@ -138,10 +140,10 @@ def parse_pdf(filename,text):
     ## Defendant Information ###
     pattern_dob = r"Date Of Birth:(.*?)City"
     result['dob'] = re.findall(pattern_dob, sections['defendant'], re.DOTALL)[0].strip()
-    result['zip'] = get_zip(pdf, pages_zip)
+    result['zip'] = funcs.get_zip(pdf, pages_zip)
     ## Bail Information ###
-    result['bail_set_by'] = get_bail_set(pdf,pages_bail_set)
-    result['bail_amount'],result['bail_paid'],result['bail_date'],result['bail_type'] = get_bail_info(pdf, pages_bail_info)
+    result['bail_set_by'] = funcs.get_bail_set(pdf,pages_bail_set)
+    result['bail_amount'],result['bail_paid'],result['bail_date'],result['bail_type'] = funcs.get_bail_info(pdf, pages_bail_info)
 
     ## Preliminary Details ###
     pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
@@ -153,15 +155,16 @@ def parse_pdf(filename,text):
     ###  https://regex101.com/r/12KSAf/1/
     return result
 
-def main(folder, output_name):
 
+def main(folder, output_name):
+    ''' Test docket parsing '''
 
     parsed_results = []
-    for enu,file in enumerate(os.listdir(folder)):
+    for i, file in enumerate(os.listdir(folder)):
         try:
-            print(enu, file)
-            text = scrape_pdf(path_folder+file)
-            data = parse_pdf(path_folder+file,text)
+            print(i, file)
+            text = scrape_pdf(folder+file)
+            data = parse_pdf(folder+file,text)
             parsed_results.append(data)
         except:
             print('Failed: ',file)
@@ -169,12 +172,13 @@ def main(folder, output_name):
     final = pd.DataFrame(parsed_results)
     final.to_csv(output_name+'.csv', index=False)
 
+
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/failed_dockets/'
+    cwd = os.path.join(os.path.dirname(__file__), '\test\sample')
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default= path_folder,
+    parser.add_argument('-p','--path_folder', default=cwd,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output',
+    parser.add_argument('-o','--output_name', default='output',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
