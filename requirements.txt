@@ -1,4 +1,4 @@
-#appnope==0.1.0
+appnope==0.1.0
 argh==0.26.2
 attrs==20.1.0
 awscli==1.18.131
@@ -20,18 +20,18 @@ descartes==1.1.0
 docutils==0.15.2
 entrypoints==0.3
 future==0.18.2
-#glob3==0.0.1
+glob3==0.0.1
 idna==2.10
 importlib-metadata==1.7.0
 ipykernel==5.3.4
 ipython==7.16.1
-#ipython-genutils==0.2.0
+ipython-genutils==0.2.0
 jedi==0.17.2
 Jinja2==2.11.2
 jmespath==0.10.0
 jsonschema==3.2.0
-#jupyter-client==6.1.7
-#jupyter-core==4.6.3
+jupyter-client==6.1.7
+jupyter-core==4.6.3
 jupytext==1.6.0
 kiwisolver==1.2.0
 lxml==4.5.2
@@ -50,7 +50,7 @@ pandocfilters==1.4.2
 parso==0.7.1
 patsy==0.5.1
 pdfminer.six==20200726
-#pdfquery==0.4.3
+pdfquery==0.4.3
 pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==7.2.0
@@ -71,8 +71,8 @@ pytz==2020.1
 PyYAML==5.3.1
 pyzmq==19.0.2
 requests==2.24.0
-#roman==3.3
-#rsa==4.5
+roman==3.3
+rsa==4.5
 s3transfer==0.3.3
 scipy==1.5.2
 selenium==3.141.0
@@ -90,4 +90,3 @@ urllib3==1.25.9
 wcwidth==0.2.5
 webencodings==0.5.1
 zipp==3.1.0
-
