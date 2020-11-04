@@ -1,6 +1,6 @@
 import pdfquery
 import PyPDF2
-import textract
+#import textract
 import re
 import os
 import argparse
@@ -35,7 +35,11 @@ def scrape_pdf(filename):
         else:
             text = textract.process(filename, method='tesseract', language='eng')
     # clean based on some basic rules
+    # for testing:
+    with open(os.path.splitext(filename)[0] + '.txt', 'w') as f:
+        f.write(text)
     text = clean_text(text)
+    print(text)
     return text
 
 
@@ -58,7 +62,8 @@ def clean_text(txt):
         txt = txt.replace(k, v)
     # patterns of extraneous text that we can get rid of
     disclaimer_pattern = r"Recent entries made(.*?)Section 9183"
-    printed_pattern = r"Printed:(.*?)\d{2}\/\d{2}\/\d{4}"
+    #printed_pattern = r"Printed:(.*?)\d{2}\/\d{2}\/\d{4}"
+    printed_pattern = r"Printed:([\s]*)\d{2}([\s]*)\/\d{2}\/\d{4}"
     # replace with nothing
     for pattern in [disclaimer_pattern, printed_pattern]:
         txt = re.sub(pattern, '', txt)
@@ -78,8 +83,7 @@ def parse_pdf(filename,text):
     Returns: 
     result: a dictionary of specific elements 
     """
-    # initialize result as an empty dictionary
-    result = {}
+
     # Set RegEx patterns to first break the document into sections
     pat_docket = ('docket', r"(?<=DOCKET)(.*?)(?=CASE INFORMATION)")
     pat_caseinfo = ('caseinfo', r"(?<=CASE INFORMATION)(.*?)(?=STATUS INFORMATION)")
@@ -108,6 +112,9 @@ def parse_pdf(filename,text):
     pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_zip))
     pdf = pdfquery.PDFQuery(filename)
     pdf.load(pages)
+
+    # initialize result as an empty dictionary
+    result = {}
         
     ###### Extract specific fields
     # with each pattern, we append the parsed text into the results dictionary
