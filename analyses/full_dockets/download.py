@@ -25,9 +25,7 @@ def download(docket_link, court_link, docketNumber):
     with open(dockets_file, 'wb') as f:
         f.write(r_pdf.content)
     text_d = docket.scrape_pdf(dockets_file)
-    #print(text_d)
     parse_d = docket.parse_pdf(dockets_file, text_d)
-    print(parse_d)
 
     # Download and parse court summary
     r_pdf = requests.get(court_link, headers={"User-Agent": "ParsingThing"})
@@ -134,12 +132,13 @@ def main():
 
 if __name__=="__main__":
     #main()
-    docket_link = 'https://ujsportal.pacourts.us/DocketSheets/CPReport.ashx?docketNumber=MC-51-CR-0021093-2020&dnh=T5sMlImSwJL%2fHGYhgVW1Bw%3d%3d'
-    court_link = 'https://ujsportal.pacourts.us/DocketSheets/CourtSummaryReport.ashx?docketNumber=MC-51-CR-0021093-2020&dnh=T5sMlImSwJL%2fHGYhgVW1Bw%3d%3d'
-    docket_number = 'MC-51-CR-0021093-2020'
-    #docket_link = 'https://ujsportal.pacourts.us/DocketSheets/CPReport.ashx?docketNumber=MC-51-CR-0021092-2020&dnh=opCBR5L87X8YHtI1L%2bEowA%3d%3d'
-    #court_link = 'https://ujsportal.pacourts.us/DocketSheets/CourtSummaryReport.ashx?docketNumber=MC-51-CR-0021092-2020&dnh=opCBR5L87X8YHtI1L%2bEowA%3d%3d'
-    #docket_number = 'MC-51-CR-0021092-2020'
+    #docket_link = 'https://ujsportal.pacourts.us/DocketSheets/CPReport.ashx?docketNumber=MC-51-CR-0021093-2020&dnh=T5sMlImSwJL%2fHGYhgVW1Bw%3d%3d'
+    #court_link = 'https://ujsportal.pacourts.us/DocketSheets/CourtSummaryReport.ashx?docketNumber=MC-51-CR-0021093-2020&dnh=T5sMlImSwJL%2fHGYhgVW1Bw%3d%3d'
+    #docket_number = 'MC-51-CR-0021093-2020'
+    docket_link = 'https://ujsportal.pacourts.us/DocketSheets/CPReport.ashx?docketNumber=MC-51-CR-0021092-2020&dnh=opCBR5L87X8YHtI1L%2bEowA%3d%3d'
+    court_link = 'https://ujsportal.pacourts.us/DocketSheets/CourtSummaryReport.ashx?docketNumber=MC-51-CR-0021092-2020&dnh=opCBR5L87X8YHtI1L%2bEowA%3d%3d'
+    docket_number = 'MC-51-CR-0021092-2020'
     
     parsed = download(docket_link, court_link, docket_number)
-    print(parsed)
+    for key, value in parsed.items():
+        print("{0}:\t {1}".format(key, value))
