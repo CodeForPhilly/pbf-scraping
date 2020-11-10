@@ -116,7 +116,7 @@ def scrape_and_store(text):
     bail_amount = re.split(": (.*?)", hold[-7])[-1]
     outstanding_bail_amt = re.split(" ", hold[-6])[-1]
     
-    if bail_status = "Denied":
+    if bail_status == "Denied":
         bail_type = "Denied"
     
     # Return a list of all the attributes
