@@ -115,6 +115,10 @@ def scrape_and_store(text):
     bail_type = re.split(": (.*?)", hold[-8])[-1]
     bail_amount = re.split(": (.*?)", hold[-7])[-1]
     outstanding_bail_amt = re.split(" ", hold[-6])[-1]
+    
+    if bail_status = "Denied":
+        bail_type = "Denied"
+    
     # Return a list of all the attributes
     return [defendant_name, age, city, state, zip_code, docket_number, filing_date, filing_time, charge, represented, in_custody, bail_status, bail_date, bail_time, bail_type, bail_amount, outstanding_bail_amt]
 
