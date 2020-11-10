@@ -39,7 +39,8 @@ def main(record_date = None, out = None):
 
     if record_date is None:
         record_date = str(date.today())
-
+    
+    #Download the first page in order to determine the correct number of pages to scrape 
     source = requests.get(PAGE_URL, params = {"search": record_date}).text
     soup = BeautifulSoup(source)
     ul = soup.findAll("ul", {"class": "pagination"})[0]
@@ -47,12 +48,13 @@ def main(record_date = None, out = None):
     # Remove last entry since that's just the the link to the next or ">>" button
     pages = ul.findAll("li", recursive=False)[:-1]
 
+    #The last page to scrape is the total number of pages 
     num_pages = len(pages)
     end_page = num_pages
         
     # This list will hold the scraped data from each page
     scraped_list_per_page = []
-    # The current page is 1 and the end page as of now is 3 (this needs to be manually checked)
+    # The current page starts at 1
     curr_page_num = 1
     # Starting at the current page and stopping at the last page of the website
     for curr_page_num in range(end_page):
@@ -116,6 +118,7 @@ def scrape_and_store(text):
     bail_amount = re.split(": (.*?)", hold[-7])[-1]
     outstanding_bail_amt = re.split(" ", hold[-6])[-1]
     
+    #the parse script requires bail_type be "Denied," rather than blank, in order to include it in the analysis.
     if bail_status == "Denied":
         bail_type = "Denied"
     
