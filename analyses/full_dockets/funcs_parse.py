@@ -9,6 +9,7 @@ Created on Tue Sep 15 19:18:24 2020
 import PyPDF2
 import re
 import numpy as np
+import pdfquery
 
 
 def find_pages(filename, string):
