@@ -30,12 +30,9 @@ def scrape_pdf(filename):
         pageObj = pdfReader.getPage(i)
         text += pageObj.extractText()
 
-    # for testing:
-    #with open(os.path.splitext(filename)[0] + '.txt', 'w') as f:
-    #    f.write(text)
-
     # clean based on some basic rules
     text = clean_text(text)
+    
     #with open(os.path.splitext(filename)[0] + '_clean.txt', 'w') as f:
     #    f.write(text)
     
@@ -68,6 +65,9 @@ def clean_text(txt):
     for pattern in substitutions:
         txt = re.sub(pattern, '', txt)
 
+    # Replace any whitespace greater than one space with just one space
+    txt = re.sub(r"\s+", ' ', txt)
+
     return txt
 
 
@@ -86,17 +86,18 @@ def parse_pdf(filename, text):
     """
 
     # Set RegEx patterns to first break the document into sections
-    sectionPatterns = {'docket':r"(?<=DOCKET)(.*?)(?=CASE INFORMATION)",
-                       'caseinfo':r"(?<=CASE INFORMATION)(.*?)(?=STATUS INFORMATION)",
-                       'status':r"(?<=STATUS INFORMATION)(.*?)(?=CALENDAR EVENTS)",
-                       'calendar':r"(?<=CALENDAR EVENTS)(.*?)(?=DEFENDANT INFORMATION)", 
-                       'defendant':"(?<=DEFENDANT INFORMATION)(.*?)(?=CASE PARTICIPANTS)",
-                       'participants':"(?<=CASE PARTICIPANTS)(.*?)(?=BAIL INFORMATION)",
-                       'bailinfo':"(?<=BAIL INFORMATION)(.*?)(?=CHARGES)",
-                       'charges':"(?<=CHARGES)(.*?)(?=DISPOSITION SENTENCING)",
-                       'dispo':"(?<=DISPOSITION SENTENCING/PENALTIES)(.*?)(?=COMMONWEALTH INFORMATION)",
-                       'contactinfo':"(?<=COMMONWEALTH INFORMATION)(.*?)(?=ENTRIES)",
-                       'entries':"(?<=ENTRIES)(.*)"}
+    # note: recently made all strings raw - second half didn't used to be
+    sectionPatterns = {'docket':    r"(?<=DOCKET)(.*?)(?=CASE INFORMATION)",
+                       'caseinfo':  r"(?<=CASE INFORMATION)(.*?)(?=STATUS INFORMATION)",
+                       'status':    r"(?<=STATUS INFORMATION)(.*?)(?=CALENDAR EVENTS)",
+                       'calendar':  r"(?<=CALENDAR EVENTS)(.*?)(?=DEFENDANT INFORMATION)", 
+                       'defendant': r"(?<=DEFENDANT INFORMATION)(.*?)(?=CASE PARTICIPANTS)",
+                       'participants': r"(?<=CASE PARTICIPANTS)(.*?)(?=BAIL INFORMATION)",
+                       'bailinfo':  r"(?<=BAIL INFORMATION)(.*?)(?=CHARGES)",
+                       'charges':   r"(?<=CHARGES)(.*?)(?=DISPOSITION SENTENCING)",
+                       'dispo':     r"(?<=DISPOSITION SENTENCING/PENALTIES)(.*?)(?=COMMONWEALTH INFORMATION)",
+                       'contactinfo': r"(?<=COMMONWEALTH INFORMATION)(.*?)(?=ENTRIES)",
+                       'entries':   r"(?<=ENTRIES)(.*)"}
 
     # Loop through RegEx patterns to break document into sections
     sections = {}
@@ -104,7 +105,7 @@ def parse_pdf(filename, text):
         section = re.findall(value, text, re.DOTALL)
         assert section != [], "Section '{0}' not found".format(key)
         sections[key] = section[0].strip()
-    
+
     # Create PDFQuery object, in addition to given text, for scraping from columns
     pages_charges = funcs.find_pages(filename,'Statute Description')
     pages_bail_set = funcs.find_pages(filename,'Filed By')
@@ -118,6 +119,19 @@ def parse_pdf(filename, text):
     # docket number, arrest date, case statuus, arresting officer, attorney, 
     # DOB, prelim hearing
     parsedData = {}
+    parsePatterns = {'docket_no':   r"MC-\d{2}-CR-\d{7}-\d{4}",
+                     'dob':         r"Date Of Birth:(.*?)City",
+                     'arrest_dt':   r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})",
+                     'case_status': r"Case Status:(.*?)Arrest",
+                     'arresting_officer': r"Arresting Officer :(.*?)Complaint\/Incident"}
+    
+    for key, value in parsePatterns.items():
+        try:
+            parsedData[key] = re.findall(value, text, re.DOTALL)[0]
+        except:
+            print('Warning: could not parse {0}'.format(key))
+            parsedData[key] = ''
+    '''
     pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
     parsedData['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
     pattern_dob = r"Date Of Birth:(.*?)City"
@@ -128,15 +142,22 @@ def parse_pdf(filename, text):
     parsedData['case_status'] = re.findall(pattern_status, sections['status'], re.DOTALL)[0]
     pattern_officer = r"Arresting Officer :(.*?)Complaint\/Incident"
     parsedData['arresting_officer'] = re.findall(pattern_officer, sections['caseinfo'], re.DOTALL)[0].strip()
-    pattern_atty = r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)"
+
+    '''
     # Change this to extract public/private/court appointed rather than specific attorney?
+    pattern_atty = r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)"
     data_attorney = re.findall(pattern_atty, sections['contactinfo'], re.DOTALL)
     if len(data_attorney) > 0:
-        attorney_information = data_attorney[0].strip()
-        attorney_information = attorney_information.split('Public')[0]
-        attorney_information = attorney_information.split('Private')[0]
-        attorney_information = attorney_information.split('Court Appointed')[0]
+        data_attorney = data_attorney[0]
+        attorney_match = re.search(r"(Public|Private|Court Appointed)", data_attorney)
+        if attorney_match:
+            attorney_type = attorney_match.group(0).strip()
+            attorney_information = data_attorney.split(attorney_type)[0]
+        else:
+            attorney_type = ''
+            attorney_information = data_attorney
         parsedData['attorney'] = attorney_information
+        parsedData['attorney_type'] = attorney_type
     else:
         parsedData['attorney'] = ''
     pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
