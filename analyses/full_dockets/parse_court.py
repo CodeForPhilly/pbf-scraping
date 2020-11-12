@@ -1,6 +1,6 @@
 import pdfquery
 import os
-import argparse
+import argh
 import pandas as pd
 
 
@@ -26,12 +26,17 @@ def scrape_and_parse_pdf(filepath):
     return parsedData
 
 
-def test_scrape_and_parse(testdir, output_name):
+@argh.arg("--testdir", help="Directory where test files are located")
+@argh.arg("--outfile", help="Filename for output file [outfile].csv")
+def test_scrape_and_parse(testdir='', outfile='court_summary_test'):
     ''' Test scrape_and_parse
     
         TODO: generate test set of pdf:csv pairs and update this function to
         automatically compare the parsed output to the validated output, instead
         of dumping into csv for manual checking'''
+
+    if testdir == '':
+        testdir = os.path.join(os.path.dirname(__file__),'tmp/court')
 
     parsedResults = []
     countAll = 0
@@ -48,16 +53,8 @@ def test_scrape_and_parse(testdir, output_name):
     print('{0}/{1} failed'.format(countFailed, countAll))
 
     final = pd.DataFrame(parsedResults)
-    final.to_csv(output_name+'.csv', index=False)
+    final.to_csv(os.path.join(testdir, '{0}.csv'.format(outfile)), index=False)
     
 
 if __name__ == "__main__":
-    testdir = os.path.join(os.path.dirname(__file__),'tmp/court')
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default=testdir,
-                        help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default='output_court',
-                        help='Path to folder with PDFs')
-
-    args = parser.parse_args()
-    test_scrape_and_parse(args.path_folder,args.output_name)
+    argh.dispatch_command(test_scrape_and_parse)
