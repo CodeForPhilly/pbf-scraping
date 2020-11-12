@@ -1,53 +1,63 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 20 19:28:32 2020
-
-@author: bmargalef
-"""
-
 import pdfquery
 import os
 import argparse
 import pandas as pd
 
 
-
-def parse_pdf(path_folder,filename):
-    pdf = pdfquery.PDFQuery(path_folder+filename)
+def scrape_and_parse_pdf(filepath):
+    """ Extract race and sex from court summary PDF file.
+        Parameters:
+            filepath (path): full path to PDF file
+        Returns:
+            parsedData (dictionary): column_name:key_value pairs
+        """
+    
+    pdf = pdfquery.PDFQuery(filepath)
     pdf.load()
 
     info_sex = pdf.pq('LTTextLineHorizontal:contains("Sex:")').text()
     info_race = pdf.pq('LTTextLineHorizontal:contains("Race:")').text()
-    result = {}
-    result['docket_no'] = filename.split('.pdf')[0]
-    result['sex'] = info_sex.split('Sex:')[1]
-    result['race'] = info_race.split('Race: ')[1]
- 
-    return result
+
+    parsedData = {}
+    parsedData['docket_no'] = os.path.splitext(os.path.basename(filepath))[0]
+    parsedData['sex'] = info_sex.split('Sex:')[1].strip()
+    parsedData['race'] = info_race.split('Race:')[1].strip()  
+
+    return parsedData
 
 
-def main(folder, output_name):
-    parsed_results = []
-    for enu,file in enumerate(os.listdir(folder)[0:10]):
+def test_scrape_and_parse(testdir, output_name):
+    ''' Test scrape_and_parse
+    
+        TODO: generate test set of pdf:csv pairs and update this function to
+        automatically compare the parsed output to the validated output, instead
+        of dumping into csv for manual checking'''
+
+    parsedResults = []
+    countAll = 0
+    countFailed = 0
+    for i, file in enumerate(os.listdir(testdir)):
+        countAll += 1
         try:
-            print(enu, file)
-            data = parse_pdf(path_folder,file)
-            parsed_results.append(data)
+            print(i)
+            data = scrape_and_parse_pdf(os.path.join(testdir, file))
+            parsedResults.append(data)
         except:
-            print('Failed: ',file)
-        
+            print('Failed: {0}'.format(file))
+            countFailed += 1
+    print('{0}/{1} failed'.format(countFailed, countAll))
 
-    final = pd.DataFrame(parsed_results)
+    final = pd.DataFrame(parsedResults)
     final.to_csv(output_name+'.csv', index=False)
+    
 
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/court/'
+    testdir = os.path.join(os.path.dirname(__file__),'tmp/court')
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default= path_folder,
+    parser.add_argument('-p','--path_folder', default=testdir,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output_court',
+    parser.add_argument('-o','--output_name', default='output_court',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
-    main(args.path_folder,args.output_name)
+    test_scrape_and_parse(args.path_folder,args.output_name)
