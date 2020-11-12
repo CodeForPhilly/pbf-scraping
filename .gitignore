@@ -139,3 +139,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .Rproj.user
+
+# Temporary-file directories
+analyses/full_dockets/tmp
