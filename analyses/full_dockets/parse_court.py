@@ -4,6 +4,7 @@ import argh
 import pandas as pd
 
 
+
 def scrape_and_parse_pdf(filepath):
     """ Extract race and sex from court summary PDF file.
         Parameters:
@@ -47,6 +48,7 @@ def test_scrape_and_parse(testdir='', outfile='court_summary_test'):
             print(i)
             data = scrape_and_parse_pdf(os.path.join(testdir, file))
             parsedResults.append(data)
+            
         except:
             print('Failed: {0}'.format(file))
             countFailed += 1

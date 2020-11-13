@@ -2,181 +2,197 @@ import pdfquery
 import PyPDF2
 import re
 import os
-import numpy as np
-import time
-from funcs_parse import *
 import argparse
 import pandas as pd
-
+import funcs_parse as funcs
 
 
 def scrape_pdf(filename):
     """ 
-    Scrapes the PDF
-    Accepts a filename, and extracts the document data page by page by using
-    PyPDF2
+    Scrapes the PDF, extracting text page by page, then cleans output
+
     Parameters: 
-    filename (string): path to the filename.pdf
+        filename (string): path to the filename.pdf
     Returns: 
-    text: Entire document as a string.
+        text (string): entire document
     """
-    FileObj = open(filename, 'rb')
-    count = 0
-    text = " "  
-    pdfReader = PyPDF2.PdfFileReader(FileObj)
+    
+    fileObj = open(filename, 'rb')
+    text = ""
+    try:
+        pdfReader = PyPDF2.PdfFileReader(fileObj)
+    except:
+        print("Warning: skipping invalid pdf {0}".format(os.path.basename(filename)))
+        return text
+    
     num_pages = pdfReader.numPages
-    while count < num_pages:
-        pageObj = pdfReader.getPage(count)
-        count+=1
+    for i in range(num_pages):
+        pageObj = pdfReader.getPage(i)
         text += pageObj.extractText()
-        # check if anything was actually returned
-        if text != "":
-            text = text
-        # use OCR to pull text if none was returned
-        else:
-            text = textract.process(f, method='tesseract', language='eng')
+
     # clean based on some basic rules
     text = clean_text(text)
+    
     return text
+
+
 def clean_text(txt):
     """ 
-    Cleans document text 
+    Cleans document text according to some basic rules.
+    
     Be careful about modifications. The regex in subsequent functions
     depends on certain elements such as newline characters being removed
     Parameters: 
-    txt (string): Entire document as a string
+        txt (string): Entire document as a string
     Returns: 
-    txt: A cleaner version of the entire document which includes removal of
-         headers, printed dates, and newline characters.
+        txt (string): A cleaner version of the entire document
     """
+    
+    # Replace unnecessary text with space (for newline) or empty char
     replacements = [('\n', ' '),
                    ('CPCMS 9082', ''),
                    ('MUNICIPAL COURT OF PHILADELPHIA COUNTY', '')]
     for k, v in replacements:
         txt = txt.replace(k, v)
-    # patterns of extraneous text that we can get rid of
-    disclaimer_pattern = r"Recent entries made(.*?)Section 9183"
-    printed_pattern = r"Printed:(.*?)\d{2}\/\d{2}\/\d{4}"
-    # replace with nothing
-    for pattern in [disclaimer_pattern, printed_pattern]:
+    
+    # Replace unnecessary text patterns with empty char
+    substitutions = [r"Recent entries made(.*?)Section 9183",
+                     r"Printed:([\s]*)\d{2}([\s]*)\/\d{2}\/\d{4}",
+                     r"Page \d+ of \d+"]
+    for pattern in substitutions:
         txt = re.sub(pattern, '', txt)
+
+    # Replace any whitespace greater than one space with just one space
+    txt = re.sub(r"\s+", ' ', txt)
+
     return txt
 
 
-def parse_pdf(filename,text):
+def parse_pdf(filename, text):
     """ 
-    Parses specific elements from the string 
-    This methodology relies heavily on regex and is extremely brittle. Testing must
-    be thorough in order to account for differences in format.
-    If the format of the court systems changes, we can expect this entire function to break.
-    We start by identifying sections of the document, and then we use secondary pattern matching
-    to extract specific elements.
+    Parses specific elements from the string.
+    
+    This methodology relies heavily on regex and is extremely brittle. Testing
+    must be thorough in order to account for differences in format. If the
+    format of the court systems changes, we can expect this entire function
+    to break. We start by identifying sections of the document, and then we use
+    secondary pattern matching to extract specific elements.
+    
+    For easier regex debugging, see https://regex101.com/r/12KSAf/1/
+    
     Parameters: 
-    text (string): Cleaned document as a string
+        text (string): Cleaned document as a string
     Returns: 
-    result: a dictionary of specific elements 
+        parsedData (dictionary): column heading:item value pairs for parsed items
     """
-    # initialize result as an empty dictionary
-    result = {}
-    # Set RegEx patterns to first break the document into sections
-    pat_docket = ('docket', r"(?<=DOCKET)(.*?)(?=CASE INFORMATION)")
-    pat_caseinfo = ('caseinfo', r"(?<=CASE INFORMATION)(.*?)(?=STATUS INFORMATION)")
-    pat_status = ('status', r"(?<=STATUS INFORMATION)(.*?)(?=CALENDAR EVENTS)")
-    pat_calevents = ('calendar', r"(?<=CALENDAR EVENTS)(.*?)(?=DEFENDANT INFORMATION)") 
-    pat_defendinfo = ('defendant', "(?<=DEFENDANT INFORMATION)(.*?)(?=CASE PARTICIPANTS)")
-    pat_participants = ('participants', "(?<=CASE PARTICIPANTS)(.*?)(?=BAIL INFORMATION)")
-    pat_bailinfo = ('bailinfo', "(?<=BAIL INFORMATION)(.*?)(?=CHARGES)")
-    pat_charges = ('charges', "(?<=CHARGES)(.*?)(?=DISPOSITION SENTENCING)")
-    pat_dispo = ('dispo', "(?<=DISPOSITION SENTENCING/PENALTIES)(.*?)(?=COMMONWEALTH INFORMATION)")
-    pat_contactinfo = ('contactinfo', "(?<=COMMONWEALTH INFORMATION)(.*?)(?=ENTRIES)")
-    pat_entries = ('entries', "(?<=ENTRIES)(.*)")
-    patternlist = [pat_docket, pat_caseinfo, pat_status, pat_calevents
-            , pat_defendinfo, pat_participants, pat_bailinfo
-            ,pat_charges, pat_dispo, pat_contactinfo, pat_entries]
-    # initialize Sections as an empty dictionary
-    sections = {}
-    # Loop through RegEx patterns to break document into sections
-    for pattern in patternlist:
-        sections[pattern[0]] = re.findall(pattern[1], text, re.DOTALL)[0].strip()
-        
-    pages_charges = find_pages(filename,'Statute Description')
-    pages_bail_set = find_pages(filename,'Filed By')
-    pages_bail_info = find_pages(filename,'Bail Posting Status')
-    pages_zip = find_pages(filename,'Zip:')
-    pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_zip))
-    pdf = pdfquery.PDFQuery(filename)
-    pdf.load(pages)
-        
-    ###### Extract specific fields
-    # with each pattern, we append the parsed text into the results dictionary
-    ### Docket Number ###
-    pattern_docket = r"MC-\d{2}-CR-\d{7}-\d{4}"
-    result['docket_no'] = re.findall(pattern_docket, text, re.DOTALL)[0]
-    ### Offenses ###
-    result['offenses'],result['offense_date'],result['statute'] = get_charges(pdf, pages_charges)
-    ### Arrest Date ###
-    pattern_arrestdt = r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})"
-    result['arrest_dt'] = re.findall(pattern_arrestdt, sections['status'], re.DOTALL)[0]
-    ### Case Status ###
-    pattern_status = r"Case Status:(.*?)Arrest"
-    result['case_status'] = re.findall(pattern_status, sections['status'], re.DOTALL)[0]
-    ## Arresting Officer ###
-    pattern_officer = r"Arresting Officer :(.*?)Complaint\/Incident"
-    result['arresting_officer'] = re.findall(pattern_officer, sections['caseinfo'], re.DOTALL)[0].strip()
-    ## Defendant Atty ###
-    pattern_atty = r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)"
-    data_attorney = re.findall(pattern_atty, sections['contactinfo'], re.DOTALL)
+
+    parsedData = {}
+
+    # Return empty dictionary if no text provided
+    if text == '':
+        return {}
+
+    # Extract some fields directly using regexp
+    parsePatterns = {'docket_no':   r"MC-\d{2}-CR-\d{7}-\d{4}",
+                     'dob':     r"Date Of Birth:(.*?)City",
+                     'arrest_date': r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})",
+                     'case_status': r"Case Status:(.*?)Arrest",
+                     'arresting_officer': r"Arresting Officer :(.*?)Complaint\/Incident"}
+    for key, value in parsePatterns.items():
+        try:
+            parsedData[key] = re.findall(value, text, re.DOTALL)[0]
+        except:
+            print('Warning: could not parse {0}'.format(key))
+            parsedData[key] = ''
+
+    # Extract some fields using regexp plus further parsing:
+    specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)",
+                     'attorney_type': r"(Public|Private|Court Appointed)",
+                     'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
+                     'date':    r"\d{2}\/\d{2}\/\d{4}",
+                     'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
+    data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
     if len(data_attorney) > 0:
-        attorney_information = data_attorney[0].strip()
-        attorney_information = attorney_information.split('Public')[0]
-        attorney_information = attorney_information.split('Private')[0]
-        attorney_information = attorney_information.split('Court Appointed')[0]
-        result['attorney'] = attorney_information
- 
+        data_attorney = data_attorney[0]
+        attorney_match = re.search(specialPatterns['attorney_type'], data_attorney)
+        if attorney_match:
+            attorney_type = attorney_match.group(0).strip()
+            attorney_information = data_attorney.split(attorney_type)[0]
+        else:
+            attorney_type = ''
+            attorney_information = data_attorney
+        parsedData['attorney'] = attorney_information
+        parsedData['attorney_type'] = attorney_type
     else:
-        result['attorney'] = ''
-    ## Defendant Information ###
-    pattern_dob = r"Date Of Birth:(.*?)City"
-    result['dob'] = re.findall(pattern_dob, sections['defendant'], re.DOTALL)[0].strip()
-    result['zip'] = get_zip(pdf, pages_zip)
-    ## Bail Information ###
-    result['bail_set_by'] = get_bail_set(pdf,pages_bail_set)
-    result['bail_amount'],result['bail_paid'],result['bail_date'],result['bail_type'] = get_bail_info(pdf, pages_bail_info)
+        parsedData['attorney'] = ''
+    # Note: though this is structured as if multiple events might be found, the
+    # 'prelim' regex as defined will only find the first event. Is this the
+    # intended behavior?
+    prelim = re.findall(specialPatterns['prelim'], text, re.DOTALL)
+    if len(prelim) > 0:
+        parsedData['prelim_hearing_date'] = re.findall(specialPatterns['date'], str(prelim))[0]
+        parsedData['prelim_hearing_time'] = re.findall(specialPatterns['time'], str(prelim))[0][0]
+    else: 
+        parsedData['prelim_hearing_date'] = ''
+        parsedData['prelim_hearing_time'] = ''
+        
+    # Extract remaining fields using pdfquery: 
+    # Create PDFQuery object, in addition to given text, for scraping from columns
+    pages_charges = funcs.find_pages(filename,'Statute Description')
+    pages_bail_set = funcs.find_pages(filename,'Filed By')
+    pages_bail_info = funcs.find_pages(filename,'Bail Posting Status')
+    pages_zip = funcs.find_pages(filename,'Zip:')
+    pages = list(set(pages_charges + pages_bail_set + pages_bail_info + pages_zip))
+    pdfObj = pdfquery.PDFQuery(filename)
+    pdfObj.load(pages)
+    # Use PDFQuery object to find location on page where the information appears
+    parsedData['offenses'],parsedData['offense_date'],parsedData['statute'] = funcs.get_charges(pdfObj, pages_charges)
+    parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
+    parsedData['bail_set_by'] = funcs.get_bail_set(pdfObj,pages_bail_set)
+    parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
+    
+    return parsedData
 
-    ## Preliminary Details ###
-    pattern_prelim = r"(?<=Calendar Event Type )(.*?)(?=Scheduled)"
-    prelim = re.findall(pattern_prelim, sections['calendar'], re.DOTALL)
-    result['prelim_hearing_dt'] = re.findall(r"\d{2}\/\d{2}\/\d{4}", str(prelim))[0]
-    result['prelim_hearing_time'] = re.findall(r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))", str(prelim))[0][0]
-    ###  Uncomment to print a section during development
-    ###  so we can build RegEx using online tools because RegEx is hard
-    ###  https://regex101.com/r/12KSAf/1/
-    return result
 
-def main(folder, output_name):
-
+def test_scrape_and_parse(folder, output_name):
+    ''' Test scrape_pdf and parse_pdf.
+    
+        TODO: generate test set of pdf:csv pairs and update this function to
+        automatically compare the parsed output to the validated output, instead
+        of dumping into csv for manual checking'''
 
     parsed_results = []
-    for enu,file in enumerate(os.listdir(folder)):
+    countAll = 0
+    countFailed = 0
+    for i, file in enumerate(os.listdir(folder)):
+        countAll += 1
         try:
-            print(enu, file)
-            text = scrape_pdf(path_folder+file)
-            data = parse_pdf(path_folder+file,text)
-            parsed_results.append(data)
+            print(i)
+            text = scrape_pdf(folder+file)
+            if text != '':
+                data = parse_pdf(folder+file,text)
+                parsed_results.append(data)
         except:
-            print('Failed: ',file)
+            print('Failed: {0}'.format(file))
+            countFailed += 1
+    print('{0}/{1} failed'.format(countFailed, countAll))
 
     final = pd.DataFrame(parsed_results)
     final.to_csv(output_name+'.csv', index=False)
+    
+    return
+
 
 if __name__ == "__main__":
-    path_folder = '/home/bmargalef/MEGA/pbf-scraping-pdf_scraping/sampledockets/sampledockets/downloads/failed_dockets/'
+    cwd = os.path.split(os.path.abspath(__file__))[0]
+    testdir = os.path.join(cwd, 'tmp/dockets/sample/')
+
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default= path_folder,
+    parser.add_argument('-p','--path_folder', default=testdir,
                         help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default= 'output',
+    parser.add_argument('-o','--output_name', default='output',
                         help='Path to folder with PDFs')
 
     args = parser.parse_args()
-    main(args.path_folder,args.output_name)
+    test_scrape_and_parse(args.path_folder,args.output_name)
 
