@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     # Docker Hub image that `main` executes in
     # This is an image that was manually generated from this project's Dockerfile and put then onto Docker Hub 
-    container: rayfallon/pbf-scraping:latest
+    container: CodeForPhilly/pbf-scraping:latest
     steps:
     # Downloads a copy of the code in your repository before running CI tests
     - name: Check out repository code
