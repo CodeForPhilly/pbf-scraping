@@ -148,7 +148,7 @@ def parse_pdf(filename, text):
     # Use PDFQuery object to find location on page where the information appears
     parsedData['offenses'],parsedData['offense_date'],parsedData['statute'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
-    parsedData['bail_set_by'] = funcs.get_bail_set(pdfObj,pages_bail_set)
+    parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
     parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
     
     return parsedData
@@ -167,7 +167,7 @@ def test_scrape_and_parse(folder, output_name):
     for i, file in enumerate(os.listdir(folder)):
         countAll += 1
         try:
-            print(i)
+            print('{0}\t {1}'.format(i, file))
             text = scrape_pdf(folder+file)
             if text != '':
                 data = parse_pdf(folder+file,text)

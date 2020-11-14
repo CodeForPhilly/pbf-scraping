@@ -4,7 +4,6 @@ import argh
 import pandas as pd
 
 
-
 def scrape_and_parse_pdf(filepath):
     """ Extract race and sex from court summary PDF file.
         Parameters:
@@ -43,15 +42,15 @@ def test_scrape_and_parse(testdir='', outfile='court_summary_test'):
     countAll = 0
     countFailed = 0
     for i, file in enumerate(os.listdir(testdir)):
-        countAll += 1
-        try:
-            print(i)
-            data = scrape_and_parse_pdf(os.path.join(testdir, file))
-            parsedResults.append(data)
-            
-        except:
-            print('Failed: {0}'.format(file))
-            countFailed += 1
+        if (os.path.splitext(file)[1] == '.pdf'):
+            countAll += 1
+            try:
+                print(i)
+                data = scrape_and_parse_pdf(os.path.join(testdir, file))
+                parsedResults.append(data)
+            except:
+                print('Failed: {0}'.format(file))
+                countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
 
     final = pd.DataFrame(parsedResults)

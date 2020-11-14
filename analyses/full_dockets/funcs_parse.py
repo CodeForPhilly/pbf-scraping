@@ -7,63 +7,59 @@ import pdfquery
 def query_contains(page, searchTerm):
     return 'LTPage[page_index="{}"] LTTextLineHorizontal:contains("{}")'.format(page, searchTerm)
 
-
 def query_box(page, bounds):
-    return 'LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(
-        page, *bounds)
-
+    return 'LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(page, *bounds)
 
 def query_line(page, bounds):
-    return 'LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(
-        page, *bounds)
+    return 'LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page, *bounds)
 
 
 def find_pages(filename, string):
     """ Return list of page numbers of filename (PDF) in which string is found  """
 
     pdfReader = PyPDF2.PdfFileReader(filename)
-    num_pages = pdfReader.numPages
+    nPages = pdfReader.numPages
     pages = []
-    for i in range(0, num_pages):
-        PageObj = pdfReader.getPage(i)
-        Text = PageObj.extractText()
-        if re.search(string,Text):
+    for i in range(0, nPages):
+        pageObj = pdfReader.getPage(i)
+        text = pageObj.extractText()
+        if re.search(string, text):
             pages.append(i)
             
     return pages
 
 
-def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x4, charges, date, statutes, delta=5):
-    """" TODO: update so that you don't need charges/data/statues for this to run"""
-    
-    
-    n_lines = pdf.pq(query_line(page, [0, y_bottom, 80, y_top])).text().split(' ')
-    n = len(n_lines)
-    if n_lines[0] == '':
-        charges, date, statutes = charges, date, statutes
-    else:
-        n_offenses =[int(x) for x in n_lines]
-        n = len(n_offenses)
+def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
+    """ TODO: update so that you don't need charges/data/statues for this to run """
+
+    charges = []
+    statutes = []
+    date = ''
+    lineNums = pdf.pq(query_line(page, [0, y_bottom, 80, y_top])).text().split(' ')
+    if lineNums[0] != '':
+        n_offenses = [int(x) for x in lineNums]
+        nLines = len(n_offenses)
         h = 0
+        
         if len(charges) > 0:
             h = 1
             if charges[0] == '':
                 charges = []
                 statutes = []
                 h = 0
-        y_array_bottom = np.zeros(n)
-        y_array_top = np.zeros(n)
+        y_array_bottom = np.zeros(nLines)
+        y_array_top = np.zeros(nLines)
         k = 0
         y = y_top  
         n_offenses.sort()
         while y > y_bottom:
-            y = y-delta
+            y = y - delta
             info = pdf.pq(query_line(page, [0, y, 70, y_top])).text().split(' ')
             if len(info[0]) > 0:
                 if int(info[-1]) == n_offenses[k]:
                     y_array_bottom[k-h] = y
                 else:
-                    if k <= n-1:
+                    if k <= nLines - 1:
                         k = k+1
 
         y = y_bottom
@@ -76,7 +72,7 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x4, charges, date, statutes,
             info = pdf.pq(query_line(page, [0, y_bottom, 70, y])).text()   
             info = (re.sub("\s+", ",", info.strip())).split(',')
             if len(info[0]) > 0:
-                if n_offenses[a-1] in [int(x) for x in info]  :
+                if n_offenses[a-1] in [int(x) for x in info]:
                     y_array_top[-index-1] = y
                     index = index+1
                     a = a-1
@@ -85,56 +81,57 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x4, charges, date, statutes,
         y_array_bottom[-1] = y_bottom
         for y0, y1 in zip(y_array_bottom,y_array_top):
             data_charges = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
-            data_statutes = pdf.pq(query_line(page, [x4, y0, x0, y1])).text()
+            data_statutes = pdf.pq(query_line(page, [x3, y0, x0, y1])).text()
             date = pdf.pq(query_line(page, [x1, y0, x2, y1])).text()
             charges.append(data_charges)
             statutes.append(data_statutes)
-
     return charges, date, statutes
 
 
-def bail_set(pdf, page, y_bottom, y_top, x0, x1, bail, bail_type, delta=5):
-    n_lines = pdf.pq(query_line(page, [0, y_bottom, 60, y_top])).text().split(' ')
-    n = len(n_lines)
+def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
+    """ Find magistrate and whether bail is set or otherwise 
+    
+        TODO: find appropriate regex/other conditions to find the actual magistrate!
+        (e.g., defendant can be listed as filer if they post bail - do not want!)
+        Also, get rid of magic numbers, simplify first part if possible"""
+    
+    magistrate = ''
+    isBailSet = -1
+
+    # Find lines
+    lineNums = pdf.pq(query_line(page, [0, y_bottom, 60, y_top])).text().split(' ')
+    n = len(lineNums)
     y_array_bottom = np.zeros(n)
     y_array_top = np.zeros(n)
     k = 1
     y = y_bottom  
     new_y_bottom = y_bottom
-    while (y < y_top) & (k<=n):
-        y = y+delta
+    while (y < y_top) & (k <= n):
+        y = y + delta
         info = pdf.pq(query_line(page, [0, new_y_bottom, 60, y])).text()   
         if len(info) > 0:
-            if int(info[0]) == int(n_lines[-1-(k-1)]):
+            if int(info[0]) == int(lineNums[-1-(k-1)]):
                 y_array_top[-1-(k-1)] = y
                 new_y_bottom = y
                 k = k+1
-
                     
     y_array_bottom[-1] = y_bottom
     y_array_bottom[0:n-1] = y_array_top[1:]
-    bail_set = []
-    bail_other = []
-    if bail_type == 0:
-        bail_set = bail
-    else:
-        bail_other = bail
-    for y0, y1 in zip(y_array_bottom,y_array_top):
-        data = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
+
+    # Find line referring to bail decision being made
+    for y0, y1 in zip(y_array_bottom, y_array_top):
+        data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
-        if re.search("Bail Set+", data_cp, flags=re.IGNORECASE) :
-            bail_set = data
-        elif re.search("Bail+", data_cp, flags=re.IGNORECASE) :
-            bail_other = data
-        if bail_type == 1:
-            if len(bail_set) > 0:
-                bail = bail_set
-                bail_type = 0
-            else:
-                bail = bail_other
-                bail_type = 1
-    return bail, bail_type
+        if re.search("Bail Set", data_cp, flags=re.IGNORECASE):
+            isBailSet = 1 # Bail is set
+        elif re.search("Bail", data_cp, flags=re.IGNORECASE):
+            isBailSet = 0 # Bail is posted, changed, denied, ...
+
+        if isBailSet == 1:
+            magistrate = data_filedBy
+                
+    return magistrate
 
 
 # Main search functions ------------------------------------------------------
@@ -181,26 +178,36 @@ def get_zip(pdf, page):
     return zip_code
 
                  
-def get_bail_set(pdf, pages):
-    bail = []
-    bail_type = 1 #0: Bail Set, 1: Other e.g. Bail Posted, changed, denied...
+def get_magistrate(pdf, pages):
+    """ Return name of person who filed document regarding bail """
+    
+    magistrate = ''
     for p in pages:
+        # Top of section
         info_1 = pdf.pq(query_contains(p, 'Filed By'))
-        x1_0 = float(info_1.attr('x0'))
-        y1_0 = float(info_1.attr('y0'))
+        x0 = float(info_1.attr('x0'))
+        y0 = float(info_1.attr('y0'))
+        # Bottom of section
         info_2 = pdf.pq(query_contains(p, 'CASE FINANCIAL INFORMATION'))
         if len(info_2) == 0:
             info_2 = pdf.pq(query_contains(p, 'CPCMS'))
-        y2_1 = float(info_2.attr('y1'))
-        bail,bail_type = bail_set(pdf,p,y2_1,y1_0,x1_0,x1_0+200,bail,bail_type)
+        x1 = x0 + 200
+        y1 = float(info_2.attr('y1'))
+        
+        magistrateData = bail_set_by(pdf, p, y1, y0, x0, x1)
+        if magistrateData != '':
+            magistrate = magistrateData
 
-    return bail
+    return magistrate
 
 
 def get_charges(pdf, pages):
+    """ Return the list of charges and statutes
+    
+        TODO: get rid of magic numbers, simplify first part if possible"""
 
-    charges = []
-    statutes = []
+    chargeList = []
+    statuteList = []
     date = ''
     for p in pages:
         info_1 = pdf.pq(query_contains(p, 'Statute Description'))
@@ -214,7 +221,10 @@ def get_charges(pdf, pages):
         x3_0 = float(info_3.attr('x0'))
         x3_1 = float(info_3.attr('x1'))+10
         info_4 = pdf.pq(query_contains(p, 'Statute'))
-        x4_0 = x1_0 -100 #float(info_4.attr('x0'))
-        charges,date, statute = offense(pdf,p,y2_1,y1_0,x1_0,x3_0,x3_1,x4_0,charges,date,statutes)
+        x4_0 = x1_0 - 100 #float(info_4.attr('x0'))
 
-    return charges, date, statute
+        charges, date, statutes = offense(pdf, p, y2_1, y1_0, x1_0, x3_0, x3_1, x4_0)
+        chargeList.extend(charges)
+        statuteList.extend(statutes)
+
+    return chargeList, date, statuteList
