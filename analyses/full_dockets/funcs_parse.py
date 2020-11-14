@@ -30,7 +30,9 @@ def find_pages(filename, string):
 
 
 def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
-    """ TODO: update so that you don't need charges/data/statues for this to run """
+    """ Return list of charges, list of statues, and date
+        
+        TODO: try to reduce the amount of code, get rid of magic numbers """
 
     charges = []
     statutes = []
@@ -39,14 +41,8 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
     if lineNums[0] != '':
         n_offenses = [int(x) for x in lineNums]
         nLines = len(n_offenses)
-        h = 0
         
-        if len(charges) > 0:
-            h = 1
-            if charges[0] == '':
-                charges = []
-                statutes = []
-                h = 0
+        h = 0
         y_array_bottom = np.zeros(nLines)
         y_array_top = np.zeros(nLines)
         k = 0
