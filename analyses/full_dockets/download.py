@@ -7,53 +7,51 @@ import os
 import sys
 import pandas as pd
 import parse_docket as docket
-#import parse_court as court
+import parse_court as court
 
 DOCKET_BUFFER = 50  # number of dockets before sleep
 SLEEP_TIME = 600    # seconds
 
 
-def download(docket_link, court_link, docketNumber):
+def download_and_parse(docketLink, courtLink, docketNumber):
     ''' Download, write to PDF, and parse the docket and court summmary 
-        corresponding to a particular docket number and return the parsed docket '''
+        corresponding to a particular docket number
+        Returns the parsed information from both files as a single dictionary '''
         
-    dirname = os.path.dirname(__file__)
-    dockets_path = os.path.join(dirname, "tmp/dockets/")
-    court_path = os.path.join(dirname, "tmp/court/")
-    dockets_file = dockets_path + docketNumber+'.pdf'
-    court_file   = court_path + docketNumber+'.pdf'
+    cwd = os.path.dirname(__file__)
+    docketDir = os.path.join(cwd, "tmp/dockets/")
+    courtDir = os.path.join(cwd, "tmp/court/")
+    docketFile = os.path.join(docketDir, '{0}.pdf'.format(docketNumber))
+    courtFile = os.path.join(courtDir, '{0}.pdf'.format(docketNumber))
 
     # Download and parse docket
-    r_pdf = requests.get(docket_link, headers={"User-Agent": "ParsingThing"})
-    with open(dockets_file, 'wb') as f:
+    r_pdf = requests.get(docketLink, headers={"User-Agent": "ParsingThing"})
+    with open(docketFile, 'wb') as f:
         f.write(r_pdf.content)
-    
-    # TODO: replace with single docket.scrape_and_parse(dockets_file)
-    text_d = docket.scrape_pdf(dockets_file)
-    parse_d = docket.parse_pdf(dockets_file, text_d)
+    parsedDocket = docket.scrape_and_parse_pdf(docketFile)
 
     # Download and parse court summary
-    r_pdf = requests.get(court_link, headers={"User-Agent": "ParsingThing"})
-    with open(court_file, 'wb') as f:
+    r_pdf = requests.get(courtLink, headers={"User-Agent": "ParsingThing"})
+    with open(courtFile, 'wb') as f:
         f.write(r_pdf.content)
-    #parse_c = court.scrape_and_parse_pdf(court_file) # Need to change parse_court to accept court file
+    parsedCourt = court.scrape_and_parse_pdf(courtFile) # Need to change parse_court to accept court file
     
-    # TODO: move court dict entries to docket dict and return full data
+    # Add court summary data (sex and race) to, double-checking docket number
+    assert parsedDocket['docket_no'] == parsedCourt['docket_no'], "docket file and court summary file docket numbers don't match"
+    parsedDocket.update(parsedCourt)
     
-    return parse_d
+    return parsedDocket
 
 
 def fetch_docket_numbers(aws_access_key_id, aws_secret_access_key):
     ''' Fetch and return list of at most 50 docket numbers from new_criminal_filings
         in the Athena database '''
     
-    config = {
-        "AWS_ACCESS_KEY_ID": aws_access_key_id,
-        "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
-        "REGION_NAME": "us-east-1",
-        "SCHEMA_NAME": "ncf",
-        "S3_STAGING_DIR": "s3://pbf-athena-1/"
-    }
+    config = {"AWS_ACCESS_KEY_ID": aws_access_key_id,
+              "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
+              "REGION_NAME": "us-east-1",
+              "SCHEMA_NAME": "ncf",
+              "S3_STAGING_DIR": "s3://pbf-athena-1/"}
     con_str = "awsathena+rest://{AWS_ACCESS_KEY_ID}:{AWS_SECRET_ACCESS_KEY}@athena.{REGION_NAME}.amazonaws.com:443/{SCHEMA_NAME}?s3_staging_dir={S3_STAGING_DIR}".format(
     **config)
 
@@ -92,19 +90,39 @@ def get_pdf_links(driver, docketstr):
     return docketLink, courtLink
 
 
+def process_docket(docketstr, driver=None):
+    ''' Given a docket number, find, download, scrape, and parse the corresponding 
+        docket and court summary files, returning the parsed data as a dictionary '''
+        
+    if not driver:
+        driver = initialize_web_driver()      
+
+    docketLink, courtLink = get_pdf_links(driver, docketstr)
+    dataDict = download_and_parse(docketLink, courtLink, docketstr)    
+    
+    return dataDict
+    
+
+def initialize_web_driver():
+    ''' Initialize and return the web driver object '''
+    
+    fireFoxOptions = webdriver.FirefoxOptions()
+    fireFoxOptions.headless = True
+    driver = webdriver.Firefox(options=fireFoxOptions)
+    driver.maximize_window()
+    
+    return driver
+
+
 def main():
     ''' Fetch all new docket numbers and download, parse, and save .csv for
         docket and court summary corresponding to each number '''
     
     docketList = fetch_docket_numbers(str(sys.argv[1]), str(sys.argv[2]))
-    
     print('{0} docket numbers found'.format(len(docketList)))
     
     # Initialize web driver
-    fireFoxOptions = webdriver.FirefoxOptions()
-    fireFoxOptions.headless=True
-    driver = webdriver.Firefox(options=fireFoxOptions)
-    driver.maximize_window()
+    driver = initialize_web_driver()   
 
     # Navigate to docket and court pdf files, then download and parse
     parsedData = []
@@ -115,12 +133,14 @@ def main():
             print("wait complete\n")
             
         try:
-            docketLink, courtLink = get_pdf_links(driver, docketstr)
-            data = download(docketLink, courtLink, docketstr)
-            parsedData.append(data)
+            data = process_docket(docketstr, driver=driver)
+            if data != {}:
+                parsedData.append(data)
+            else:
+                print("warning: skipping empty/invalid docket {0}".format(docketstr))
             
         except Exception as e:
-            print("could not download docket {0}".docketstr)
+            print("could not download docket {0}".format(docketstr))
             print(e)
 
     driver.close()
@@ -137,9 +157,36 @@ def main():
     return
 
 
-def test_download(testlist=[]):
-    return testlist
+def test_download(testfile='', outfile='download_test'):
+    ''' Test download function given csv of [docket_link, court_link, docket_no] '''
+
+    cwd = os.path.dirname(__file__)
+    savedir = os.path.join(cwd,'tmp/')
+    if testfile == '':
+        testname = 'download_links_test.csv'
+        testfile = os.path.join(savedir, testname)
+
+    testDF = pd.read_csv(testfile)
+
+    parsedDockets = []
+    countAll = 0
+    countFailed = 0
+    for i, row in testDF.iterrows():
+        countAll += 1
+        try:
+            print(i)
+            data = download_and_parse(row['docket_link'], row['court_link'], row['docket_no'])
+            if data != {}:
+                parsedDockets.append(data)
+        except:
+            print('Failed: {0}'.format(row['docket_no']))
+            countFailed += 1
+    print('{0}/{1} failed'.format(countFailed, countAll))
+
+    final = pd.DataFrame(parsedDockets)
+    final.to_csv(os.path.join(savedir, '{0}.csv'.format(outfile)), index=False)    
 
 
 if __name__=="__main__":
-    main()
+    #main()
+    test_download()
