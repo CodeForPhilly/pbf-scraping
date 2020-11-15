@@ -7,7 +7,7 @@ import os
 import sys
 import pandas as pd
 import parse_docket as docket
-import parse_court as court
+#import parse_court as court
 
 DOCKET_BUFFER = 50  # number of dockets before sleep
 SLEEP_TIME = 600    # seconds

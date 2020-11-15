@@ -34,26 +34,29 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
         
         TODO: try to reduce the amount of code, get rid of magic numbers """
 
+    x_left = 0
+    x_right = 80 # Or 70?
+
     charges = []
     statutes = []
     date = ''
-    lineNums = pdf.pq(query_line(page, [0, y_bottom, 80, y_top])).text().split(' ')
+    lineNums = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y_top])).text().split(' ') #80
     if lineNums[0] != '':
-        n_offenses = [int(x) for x in lineNums]
-        nLines = len(n_offenses)
+        lineNums = [int(x) for x in lineNums]
+        nLines = len(lineNums)
         
         h = 0
-        y_array_bottom = np.zeros(nLines)
-        y_array_top = np.zeros(nLines)
         k = 0
+        yArray_bottom = np.zeros(nLines)
+        yArray_top = np.zeros(nLines)
         y = y_top  
-        n_offenses.sort()
+        lineNums.sort()
         while y > y_bottom:
             y = y - delta
-            info = pdf.pq(query_line(page, [0, y, 70, y_top])).text().split(' ')
+            info = pdf.pq(query_line(page, [x_left, y, x_right, y_top])).text().split(' ') #70
             if len(info[0]) > 0:
-                if int(info[-1]) == n_offenses[k]:
-                    y_array_bottom[k-h] = y
+                if int(info[-1]) == lineNums[k]:
+                    yArray_bottom[k-h] = y
                 else:
                     if k <= nLines - 1:
                         k = k+1
@@ -62,25 +65,26 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
         index = 0
         a = 0
         for i in range(int((y_top-y_bottom)/delta)):
-            if abs(a-1) > len(n_offenses):
+            if abs(a-1) > len(lineNums):
                 break
             y = y + delta
-            info = pdf.pq(query_line(page, [0, y_bottom, 70, y])).text()   
+            info = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y])).text()    #70
             info = (re.sub("\s+", ",", info.strip())).split(',')
             if len(info[0]) > 0:
-                if n_offenses[a-1] in [int(x) for x in info]:
-                    y_array_top[-index-1] = y
+                if lineNums[a-1] in [int(x) for x in info]:
+                    yArray_top[-index-1] = y
                     index = index+1
                     a = a-1
                     
-        y_array_top[0] = y_top
-        y_array_bottom[-1] = y_bottom
-        for y0, y1 in zip(y_array_bottom,y_array_top):
+        yArray_top[0] = y_top
+        yArray_bottom[-1] = y_bottom
+        for y0, y1 in zip(yArray_bottom,yArray_top):
             data_charges = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
             data_statutes = pdf.pq(query_line(page, [x3, y0, x0, y1])).text()
             date = pdf.pq(query_line(page, [x1, y0, x2, y1])).text()
             charges.append(data_charges)
             statutes.append(data_statutes)
+            
     return charges, date, statutes
 
 
@@ -97,8 +101,8 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
     # Find lines
     lineNums = pdf.pq(query_line(page, [0, y_bottom, 60, y_top])).text().split(' ')
     n = len(lineNums)
-    y_array_bottom = np.zeros(n)
-    y_array_top = np.zeros(n)
+    yArray_bottom = np.zeros(n)
+    yArray_top = np.zeros(n)
     k = 1
     y = y_bottom  
     new_y_bottom = y_bottom
@@ -107,15 +111,15 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
         info = pdf.pq(query_line(page, [0, new_y_bottom, 60, y])).text()   
         if len(info) > 0:
             if int(info[0]) == int(lineNums[-1-(k-1)]):
-                y_array_top[-1-(k-1)] = y
+                yArray_top[-1-(k-1)] = y
                 new_y_bottom = y
                 k = k+1
                     
-    y_array_bottom[-1] = y_bottom
-    y_array_bottom[0:n-1] = y_array_top[1:]
+    yArray_bottom[-1] = y_bottom
+    yArray_bottom[0:n-1] = yArray_top[1:]
 
     # Find line referring to bail decision being made
-    for y0, y1 in zip(y_array_bottom, y_array_top):
+    for y0, y1 in zip(yArray_bottom, yArray_top):
         data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
@@ -206,19 +210,23 @@ def get_charges(pdf, pages):
     statuteList = []
     date = ''
     for p in pages:
+        # Charge description bottom left
         info_1 = pdf.pq(query_contains(p, 'Statute Description'))
         x1_0 = float(info_1.attr('x0'))
         y1_0 = float(info_1.attr('y0'))
+        # Bottom of charges section
         info_2 = pdf.pq(query_contains(p, 'DISPOSITION SENTENCING'))
         if len(info_2) == 0:
             info_2 = pdf.pq(query_contains(p, 'CPCMS'))
         y2_1 = float(info_2.attr('y1'))
+        # Offense date left and right
         info_3 = pdf.pq(query_contains(p, 'Offense Dt'))
         x3_0 = float(info_3.attr('x0'))
         x3_1 = float(info_3.attr('x1'))+10
+        # Statute number left
         info_4 = pdf.pq(query_contains(p, 'Statute'))
         x4_0 = x1_0 - 100 #float(info_4.attr('x0'))
-
+        
         charges, date, statutes = offense(pdf, p, y2_1, y1_0, x1_0, x3_0, x3_1, x4_0)
         chargeList.extend(charges)
         statuteList.extend(statutes)

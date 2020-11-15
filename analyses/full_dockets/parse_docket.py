@@ -100,17 +100,17 @@ def parse_pdf(filename, text):
                      'arresting_officer': r"Arresting Officer :(.*?)Complaint\/Incident"}
     for key, value in parsePatterns.items():
         try:
-            parsedData[key] = re.findall(value, text, re.DOTALL)[0]
+            parsedData[key] = re.findall(value, text, re.DOTALL)[0].strip()
         except:
             print('Warning: could not parse {0}'.format(key))
             parsedData[key] = ''
 
     # Extract some fields using regexp plus further parsing:
     specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)",
-                     'attorney_type': r"(Public|Private|Court Appointed)",
-                     'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
-                     'date':    r"\d{2}\/\d{2}\/\d{4}",
-                     'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
+                       'attorney_type': r"(Public|Private|Court Appointed)",
+                       'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
+                       'date':    r"\d{2}\/\d{2}\/\d{4}",
+                       'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
     if len(data_attorney) > 0:
         data_attorney = data_attorney[0]
@@ -164,7 +164,7 @@ def test_scrape_and_parse(folder, output_name):
     parsed_results = []
     countAll = 0
     countFailed = 0
-    for i, file in enumerate(os.listdir(folder)):
+    for i, file in enumerate(sorted(os.listdir(folder))):
         countAll += 1
         try:
             print('{0}\t {1}'.format(i, file))
