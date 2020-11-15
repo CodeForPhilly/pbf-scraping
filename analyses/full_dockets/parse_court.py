@@ -36,25 +36,27 @@ def test_scrape_and_parse(testdir='', outfile='court_summary_test'):
         of dumping into csv for manual checking'''
 
     if testdir == '':
-        testdir = os.path.join(os.path.dirname(__file__),'tmp/court')
+        cwd = os.path.dirname(__file__)
+        testdir = os.path.join(cwd,'tmp/court/')
+        savedir = os.path.join(cwd,'tmp/')
 
-    parsedResults = []
+    parsedSummaries = []
     countAll = 0
     countFailed = 0
     for i, file in enumerate(os.listdir(testdir)):
         if (os.path.splitext(file)[1] == '.pdf'):
             countAll += 1
             try:
-                print(i)
+                print('{0}\t {1}'.format(i, file))
                 data = scrape_and_parse_pdf(os.path.join(testdir, file))
-                parsedResults.append(data)
+                parsedSummaries.append(data)
             except:
                 print('Failed: {0}'.format(file))
                 countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
 
-    final = pd.DataFrame(parsedResults)
-    final.to_csv(os.path.join(testdir, '{0}.csv'.format(outfile)), index=False)
+    final = pd.DataFrame(parsedSummaries)
+    final.to_csv(os.path.join(savedir, '{0}.csv'.format(outfile)), index=False)
     
 
 if __name__ == "__main__":
