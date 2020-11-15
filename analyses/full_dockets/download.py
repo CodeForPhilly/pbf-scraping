@@ -28,7 +28,8 @@ def download_and_parse(docketLink, courtLink, docketNumber):
     r_pdf = requests.get(docketLink, headers={"User-Agent": "ParsingThing"})
     with open(docketFile, 'wb') as f:
         f.write(r_pdf.content)
-    parsedDocket = docket.scrape_and_parse_pdf(docketFile)
+    docketText = docket.scrape_pdf(docketFile)
+    parsedDocket = docket.parse_pdf(docketFile, docketText)
 
     # Download and parse court summary
     r_pdf = requests.get(courtLink, headers={"User-Agent": "ParsingThing"})
