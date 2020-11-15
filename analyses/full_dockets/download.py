@@ -168,5 +168,5 @@ def test_download(testfile='', outfile='download_test'):
 
 
 if __name__=="__main__":
-    #main()
-    test_download()
+    main()
+    #test_download()
