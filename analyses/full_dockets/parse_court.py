@@ -1,57 +1,63 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 20 19:28:32 2020
-
-@author: bmargalef
-"""
-
 import pdfquery
 import os
-import argparse
+import argh
 import pandas as pd
 
 
-def parse_pdf(path_folder, filename):
-    ''' Parse sex and race from court summary PDF '''
+def scrape_and_parse_pdf(filepath):
+    """ Extract race and sex from court summary PDF file.
+        Parameters:
+            filepath (path): full path to PDF file
+        Returns:
+            parsedData (dictionary): column_name:key_value pairs
+        """
     
-    pdf = pdfquery.PDFQuery(path_folder+filename)
+    pdf = pdfquery.PDFQuery(filepath)
     pdf.load()
 
     info_sex = pdf.pq('LTTextLineHorizontal:contains("Sex:")').text()
     info_race = pdf.pq('LTTextLineHorizontal:contains("Race:")').text()
-    result = {}
-    result['docket_no'] = filename.split('.pdf')[0]
-    result['sex'] = info_sex.split('Sex:')[1]
-    result['race'] = info_race.split('Race: ')[1]
- 
-    return result
+
+    parsedData = {}
+    parsedData['docket_no'] = os.path.splitext(os.path.basename(filepath))[0]
+    parsedData['sex'] = info_sex.split('Sex:')[1].strip()
+    parsedData['race'] = info_race.split('Race:')[1].strip()  
+
+    return parsedData
 
 
-def main(folder, output_name):
-    parsed_results = []
-    for i, file in enumerate(os.listdir(folder)[0:10]): # Why just the first ten?
-        try:
-            print(i, file)
-            data = parse_pdf(folder, file)
-            parsed_results.append(data)
-        except:
-            print('Failed: ',file)
-        
-
-    final = pd.DataFrame(parsed_results)
-    final.to_csv(output_name+'.csv', index=False)
+@argh.arg("--testdir", help="Directory where test files are located")
+@argh.arg("--outfile", help="Filename for output file [outfile].csv")
+def test_scrape_and_parse(testdir='', outfile='court_summary_test'):
+    ''' Test scrape_and_parse
     
-    return
+        TODO: generate test set of pdf:csv pairs and update this function to
+        automatically compare the parsed output to the validated output, instead
+        of dumping into csv for manual checking'''
 
+    if testdir == '':
+        cwd = os.path.dirname(__file__)
+        testdir = os.path.join(cwd,'tmp/court/')
+        savedir = os.path.join(cwd,'tmp/')
+
+    parsedSummaries = []
+    countAll = 0
+    countFailed = 0
+    for i, file in enumerate(os.listdir(testdir)):
+        if (os.path.splitext(file)[1] == '.pdf'):
+            countAll += 1
+            try:
+                print('{0}\t {1}'.format(i, file))
+                data = scrape_and_parse_pdf(os.path.join(testdir, file))
+                parsedSummaries.append(data)
+            except:
+                print('Failed: {0}'.format(file))
+                countFailed += 1
+    print('{0}/{1} failed'.format(countFailed, countAll))
+
+    final = pd.DataFrame(parsedSummaries)
+    final.to_csv(os.path.join(savedir, '{0}.csv'.format(outfile)), index=False)
+    
 
 if __name__ == "__main__":
-    cwd = os.path.join(os.path.dirname(__file__), '\test\sample')
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default=cwd,
-                        help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default='output_court',
-                        help='Path to folder with PDFs')
-
-    args = parser.parse_args()
-    main(args.path_folder,args.output_name)
+    argh.dispatch_command(test_scrape_and_parse)
