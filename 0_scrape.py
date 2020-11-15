@@ -45,17 +45,15 @@ def main(record_date = None, out = None):
     soup = BeautifulSoup(source)
     ul = soup.findAll("ul", {"class": "pagination"})[0]
 
-    # Remove last entry since that's just the the link to the next or ">>" button
-    pages = ul.findAll("li", recursive=False)[:-1]
+    # Get all "links" to pages
+    pages = ul.findAll("li", recursive=False)
 
-    #The last page to scrape is the total number of pages 
-    num_pages = len(pages)
-    end_page = num_pages
+    # If > 1 pages then end page ignores last "link" (the next or ">>" button) , otherwise set to 1
+    end_page = len(pages) - 1 if len(pages) > 1 else 1
         
     # This list will hold the scraped data from each page
     scraped_list_per_page = []
-    # The current page starts at 1
-    curr_page_num = 1
+    
     # Starting at the current page and stopping at the last page of the website
     for curr_page_num in range(end_page):
         # Take the current page number and increament it each iteration
