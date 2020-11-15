@@ -90,30 +90,6 @@ def get_pdf_links(driver, docketstr):
     return docketLink, courtLink
 
 
-def process_docket(docketstr, driver=None):
-    ''' Given a docket number, find, download, scrape, and parse the corresponding 
-        docket and court summary files, returning the parsed data as a dictionary '''
-        
-    if not driver:
-        driver = initialize_web_driver()      
-
-    docketLink, courtLink = get_pdf_links(driver, docketstr)
-    dataDict = download_and_parse(docketLink, courtLink, docketstr)    
-    
-    return dataDict
-    
-
-def initialize_web_driver():
-    ''' Initialize and return the web driver object '''
-    
-    fireFoxOptions = webdriver.FirefoxOptions()
-    fireFoxOptions.headless = True
-    driver = webdriver.Firefox(options=fireFoxOptions)
-    driver.maximize_window()
-    
-    return driver
-
-
 def main():
     ''' Fetch all new docket numbers and download, parse, and save .csv for
         docket and court summary corresponding to each number '''
@@ -122,7 +98,10 @@ def main():
     print('{0} docket numbers found'.format(len(docketList)))
     
     # Initialize web driver
-    driver = initialize_web_driver()   
+    fireFoxOptions = webdriver.FirefoxOptions()
+    fireFoxOptions.headless = True
+    driver = webdriver.Firefox(options=fireFoxOptions)
+    driver.maximize_window()
 
     # Navigate to docket and court pdf files, then download and parse
     parsedData = []
@@ -133,7 +112,8 @@ def main():
             print("wait complete\n")
             
         try:
-            data = process_docket(docketstr, driver=driver)
+            docketLink, courtLink = get_pdf_links(driver, docketstr)
+            data = download_and_parse(docketLink, courtLink, docketstr)  
             if data != {}:
                 parsedData.append(data)
             else:
