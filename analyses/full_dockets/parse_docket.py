@@ -2,12 +2,27 @@ import pdfquery
 import PyPDF2
 import re
 import os
-import argparse
+import argh
 import pandas as pd
 import funcs_parse as funcs
 
 
-def scrape_pdf(filename):
+def scrape_and_parse_pdf(filepath):
+    """ Extract fields from docket file.
+        Parameters:
+            filepath (path): full path to PDF file
+        Returns:
+            parsedData (dictionary): column_name:key_value pairs
+        """
+    
+    text = scrape_pdf(filepath)        
+    text = clean_text(text)
+    parsedData = parse_pdf(filepath, text)
+    
+    return parsedData
+
+
+def scrape_pdf(filepath):
     """ 
     Scrapes the PDF, extracting text page by page, then cleans output
 
@@ -17,22 +32,19 @@ def scrape_pdf(filename):
         text (string): entire document
     """
     
-    fileObj = open(filename, 'rb')
-    text = ""
+    fileObj = open(filepath, 'rb')
+    text = ''
     try:
         pdfReader = PyPDF2.PdfFileReader(fileObj)
     except:
-        print("Warning: skipping invalid pdf {0}".format(os.path.basename(filename)))
+        print("Warning: skipping invalid pdf {0}".format(os.path.basename(filepath)))
         return text
     
     num_pages = pdfReader.numPages
     for i in range(num_pages):
         pageObj = pdfReader.getPage(i)
         text += pageObj.extractText()
-
-    # clean based on some basic rules
-    text = clean_text(text)
-    
+        
     return text
 
 
@@ -47,6 +59,9 @@ def clean_text(txt):
     Returns: 
         txt (string): A cleaner version of the entire document
     """
+    
+    if txt == '':
+        return txt
     
     # Replace unnecessary text with space (for newline) or empty char
     replacements = [('\n', ' '),
@@ -100,17 +115,17 @@ def parse_pdf(filename, text):
                      'arresting_officer': r"Arresting Officer :(.*?)Complaint\/Incident"}
     for key, value in parsePatterns.items():
         try:
-            parsedData[key] = re.findall(value, text, re.DOTALL)[0]
+            parsedData[key] = re.findall(value, text, re.DOTALL)[0].strip()
         except:
             print('Warning: could not parse {0}'.format(key))
             parsedData[key] = ''
 
     # Extract some fields using regexp plus further parsing:
     specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)",
-                     'attorney_type': r"(Public|Private|Court Appointed)",
-                     'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
-                     'date':    r"\d{2}\/\d{2}\/\d{4}",
-                     'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
+                       'attorney_type': r"(Public|Private|Court Appointed)",
+                       'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
+                       'date':    r"\d{2}\/\d{2}\/\d{4}",
+                       'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
     if len(data_attorney) > 0:
         data_attorney = data_attorney[0]
@@ -119,12 +134,15 @@ def parse_pdf(filename, text):
             attorney_type = attorney_match.group(0).strip()
             attorney_information = data_attorney.split(attorney_type)[0]
         else:
+            print('Warning: could not parse {0}'.format('attorney type'))
             attorney_type = ''
             attorney_information = data_attorney
         parsedData['attorney'] = attorney_information
         parsedData['attorney_type'] = attorney_type
     else:
+        print('Warning: could not parse {0}'.format('attorney'))
         parsedData['attorney'] = ''
+        parsedData['attorney_type'] = ''
     # Note: though this is structured as if multiple events might be found, the
     # 'prelim' regex as defined will only find the first event. Is this the
     # intended behavior?
@@ -133,6 +151,7 @@ def parse_pdf(filename, text):
         parsedData['prelim_hearing_date'] = re.findall(specialPatterns['date'], str(prelim))[0]
         parsedData['prelim_hearing_time'] = re.findall(specialPatterns['time'], str(prelim))[0][0]
     else: 
+        print('Warning: could not parse {0}'.format('prelim hearing date/time'))
         parsedData['prelim_hearing_date'] = ''
         parsedData['prelim_hearing_time'] = ''
         
@@ -148,51 +167,44 @@ def parse_pdf(filename, text):
     # Use PDFQuery object to find location on page where the information appears
     parsedData['offenses'],parsedData['offense_date'],parsedData['statute'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
-    parsedData['bail_set_by'] = funcs.get_bail_set(pdfObj,pages_bail_set)
+    parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
     parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
     
     return parsedData
 
 
-def test_scrape_and_parse(folder, output_name):
-    ''' Test scrape_pdf and parse_pdf.
+@argh.arg("--testdir", help="Directory where test files are located")
+@argh.arg("--outfile", help="Filename for output file [outfile].csv")
+def test_scrape_and_parse(testdir='', outfile='docket_test'):
+    """ Test scrape_pdf and parse_pdf.
     
         TODO: generate test set of pdf:csv pairs and update this function to
         automatically compare the parsed output to the validated output, instead
-        of dumping into csv for manual checking'''
+        of dumping into csv for manual checking"""
 
-    parsed_results = []
+    if testdir == '':
+        cwd = os.path.dirname(__file__)
+        testdir = os.path.join(cwd,'tmp/dockets/')
+        savedir = os.path.join(cwd,'tmp/')
+
+    parsedDockets = []
     countAll = 0
     countFailed = 0
-    for i, file in enumerate(os.listdir(folder)):
+    for i, file in enumerate(sorted(os.listdir(testdir))):
         countAll += 1
         try:
-            print(i)
-            text = scrape_pdf(folder+file)
-            if text != '':
-                data = parse_pdf(folder+file,text)
-                parsed_results.append(data)
+            print('{0}\t {1}'.format(i, file))
+            data = scrape_and_parse_pdf(os.path.join(testdir, file))
+            if data != {}:
+                parsedDockets.append(data)
         except:
             print('Failed: {0}'.format(file))
             countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
 
-    final = pd.DataFrame(parsed_results)
-    final.to_csv(output_name+'.csv', index=False)
-    
-    return
+    final = pd.DataFrame(parsedDockets)
+    final.to_csv(os.path.join(savedir, '{0}.csv'.format(outfile)), index=False)
 
 
 if __name__ == "__main__":
-    cwd = os.path.split(os.path.abspath(__file__))[0]
-    testdir = os.path.join(cwd, 'tmp/dockets/sample/')
-
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-p','--path_folder', default=testdir,
-                        help='Path to folder with PDFs')
-    parser.add_argument('-o','--output_name', default='output',
-                        help='Path to folder with PDFs')
-
-    args = parser.parse_args()
-    test_scrape_and_parse(args.path_folder,args.output_name)
-
+    argh.dispatch_command(test_scrape_and_parse)
