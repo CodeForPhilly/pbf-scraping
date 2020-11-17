@@ -2,9 +2,6 @@ name: Try to run "Main" Action In Container
 
 
 on:
-  push:
-    branches: 
-      - 'setenv'
   schedule: 
     # Runs every day at 6am EDT (cron in UTC)
     - cron: '0 13 * * *'
