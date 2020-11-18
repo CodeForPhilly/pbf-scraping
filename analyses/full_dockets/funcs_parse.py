@@ -30,9 +30,7 @@ def find_pages(filename, string):
 
 
 def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
-    """ Return list of charges, list of statues, and date
-        
-        TODO: try to reduce the amount of code, get rid of magic numbers """
+    """ Return list of charges, list of statues, and date """
 
     x_left = 0
     x_right = 80 # Or 70?
@@ -89,11 +87,7 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
 
 
 def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
-    """ Find magistrate and whether bail is set or otherwise 
-    
-        TODO: find appropriate regex/other conditions to find the actual magistrate!
-        (e.g., defendant can be listed as filer if they post bail - do not want!)
-        Also, get rid of magic numbers, simplify first part if possible"""
+    """ Find magistrate and whether bail is set or otherwise """
     
     magistrate = ''
 
@@ -200,9 +194,7 @@ def get_magistrate(pdf, pages):
 
 
 def get_charges(pdf, pages):
-    """ Return the list of charges and statutes
-    
-        TODO: get rid of magic numbers, simplify first part if possible"""
+    """ Return the list of charges and statutes """
 
     chargeList = []
     statuteList = []
