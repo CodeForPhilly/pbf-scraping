@@ -33,15 +33,19 @@ jobs:
     - name: Set env
       run: |
         if [ -n "${{ github.event.inputs.date }}" ]; then
-          echo '::set-env name=scrape_date::'"${{ github.event.inputs.date }}";
+          # echo '::set-env name=scrape_date::'"${{ github.event.inputs.date }}";
+          echo "scrape_date=${{ github.event.inputs.date }}" >> $GITHUB_ENV;
         else
-          echo '::set-env name=scrape_date::'$(date +%Y-%m-%d -d '1 day ago');
+          # echo '::set-env name=scrape_date::'$(date +%Y-%m-%d -d '1 day ago');
+          echo "scrape_date=$(date +%Y-%m-%d -d '1 day ago')" >> $GITHUB_ENV;
         fi
 
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo '::set-env name=email::'"${{ github.event.inputs.email }}";
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # echo '::set-env name=email::'"${{ github.event.inputs.email }}";
+          echo "email=${{ github.event.inputs.email }}" >> $GITHUB_ENV;
         else
-          echo '::set-env name=email::'"${{ env.LISTSERV }}"
+          # echo '::set-env name=email::'""
+          echo "email=${{ env.LISTSERV }}" >> $GITHUB_ENV;
         fi
       env:
         LISTSERV: ${{ secrets.LISTSERV }}
