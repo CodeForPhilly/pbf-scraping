@@ -6,6 +6,7 @@ import time
 import os
 import sys
 import pandas as pd
+import argh
 import parse_docket as docket
 import parse_court as court
 
@@ -14,9 +15,9 @@ SLEEP_TIME = 600    # seconds
 
 
 def download_and_parse(docketLink, courtLink, docketNumber):
-    ''' Download, write to PDF, and parse the docket and court summmary 
+    """ Download, write to PDF, and parse the docket and court summmary 
         corresponding to a particular docket number
-        Returns the parsed information from both files as a single dictionary '''
+        Returns the parsed information from each file as dictionaries """
         
     cwd = os.path.dirname(__file__)
     docketDir = os.path.join(cwd, "tmp/dockets/")
@@ -25,28 +26,28 @@ def download_and_parse(docketLink, courtLink, docketNumber):
     courtFile = os.path.join(courtDir, '{0}.pdf'.format(docketNumber))
 
     # Download and parse docket
-    r_pdf = requests.get(docketLink, headers={"User-Agent": "ParsingThing"})
-    with open(docketFile, 'wb') as f:
-        f.write(r_pdf.content)
+    download_pdf(docketLink, docketFile)
     docketText = docket.scrape_pdf(docketFile)
     parsedDocket = docket.parse_pdf(docketFile, docketText)
 
     # Download and parse court summary
-    r_pdf = requests.get(courtLink, headers={"User-Agent": "ParsingThing"})
-    with open(courtFile, 'wb') as f:
-        f.write(r_pdf.content)
-    parsedCourt = court.scrape_and_parse_pdf(courtFile) # Need to change parse_court to accept court file
-    
-    # Add court summary data (sex and race) to, double-checking docket number
-    assert parsedDocket['docket_no'] == parsedCourt['docket_no'], "docket file and court summary file docket numbers don't match"
-    parsedDocket.update(parsedCourt)
-    
-    return parsedDocket
+    download_pdf(courtLink, courtFile)
+    parsedCourt = court.scrape_and_parse_pdf(courtFile)
+        
+    return parsedDocket, parsedCourt
 
+
+def download_pdf(link, filepath):
+    """ Save PDF at given URL link to given filepath """
+    
+    r_pdf = requests.get(link, headers={"User-Agent": "ParsingThing"})
+    with open(filepath, 'wb') as f:
+        f.write(r_pdf.content)
+    
 
 def fetch_docket_numbers(aws_access_key_id, aws_secret_access_key):
-    ''' Fetch and return list of at most 50 docket numbers from new_criminal_filings
-        in the Athena database '''
+    """ Fetch and return list of at most 50 docket numbers from new_criminal_filings
+        in the Athena database """
     
     config = {"AWS_ACCESS_KEY_ID": aws_access_key_id,
               "AWS_SECRET_ACCESS_KEY": aws_secret_access_key,
@@ -66,8 +67,14 @@ def fetch_docket_numbers(aws_access_key_id, aws_secret_access_key):
     return docket_list
 
 
-def get_pdf_links(driver, docketstr):
-    ''' Get docket and court summary pdf file links from website '''
+def get_pdf_links(docketstr, driver=None):
+    ''' Get docket and court summary pdf file links from website.
+        If web driver not provided, this will initialize and close one. '''
+
+    closeDriver = False
+    if not driver:
+        closeDriver = True
+        driver = initialize_webdriver()
 
     docketNumber = docketstr.split("-")
     
@@ -88,58 +95,98 @@ def get_pdf_links(driver, docketstr):
     docketLink = docketDocument.get_attribute("href")
     courtLink = courtSummary.get_attribute("href")
     
+    if closeDriver:
+        driver.close()
+    
     return docketLink, courtLink
 
 
-def main():
-    ''' Fetch all new docket numbers and download, parse, and save .csv for
-        docket and court summary corresponding to each number '''
+def initialize_webdriver():
+    """ Initialize headless Firefox webdriver """
     
-    docketList = fetch_docket_numbers(str(sys.argv[1]), str(sys.argv[2]))
-    print('{0} docket numbers found'.format(len(docketList)))
-    
-    # Initialize web driver
     fireFoxOptions = webdriver.FirefoxOptions()
     fireFoxOptions.headless = True
     driver = webdriver.Firefox(options=fireFoxOptions)
-    driver.maximize_window()
+    driver.maximize_window() 
+    
+    return driver
 
-    # Navigate to docket and court pdf files, then download and parse
-    parsedData = []
-    for i, docketstr in docketList:
-        if (i%DOCKET_BUFFER==0 and i>0):
+
+@argh.arg("--docket", help="Full docket number", default='')
+@argh.arg("--awsid", help="AWS ID", default='')
+@argh.arg("--awskey", help="AWS key", default='')
+def main(docket='', awsid='', awskey=''):
+    ''' Fetch all new docket numbers and download, parse, and save .csv for
+        docket and court summary corresponding to each number.
+        Can be used either with a specific docket number or with the AWS
+        Athena database id-key pair. '''
+    
+    # Check that one of the two use cases is met
+    assert (docket != '') or (awsid != '' and awskey != ''), print('Please specify either one docket number or AWS information (id-key pair) to fetch docket list')
+
+    if docket != '':
+        # Use single docket if docket number provided
+        docketList = [docket]
+        print(docketList)
+    else:
+        # Fetch list of docket numbers from AWS Athena database
+        docketList = fetch_docket_numbers(awsid, awskey)
+        print('{0} docket numbers found'.format(len(docketList)))
+
+    driver = initialize_webdriver()
+        
+    parsedDockets = []
+    parsedCourts = []
+    failedDockets = []
+    
+    # Download and parse each file in the list
+    for i, docketstr in enumerate(docketList):
+
+        # To keep server from kicking us out, don't send too many requests at once
+        if (i % DOCKET_BUFFER == 0 and i > 0):
             print("\nSleeping for {0} seconds...".format(SLEEP_TIME))
             time.sleep(SLEEP_TIME)
             print("wait complete\n")
-            
+        
+        # Navigate to docket and court pdf files, then download and parse
         try:
-            docketLink, courtLink = get_pdf_links(driver, docketstr)
-            data = download_and_parse(docketLink, courtLink, docketstr)  
-            if data != {}:
-                parsedData.append(data)
+            docketLink, courtLink = get_pdf_links(docketstr, driver=driver)
+            docketDict, courtDict = download_and_parse(docketLink, courtLink, docketstr)
+
+            if docketDict != {} and courtDict != {}:
+                parsedDockets.append(docketDict)
+                parsedCourts.append(courtDict)
             else:
-                print("warning: skipping empty/invalid docket {0}".format(docketstr))
-            
+                failedDockets.append(docketstr)
         except Exception as e:
-            print("could not download docket {0}".format(docketstr))
+            print("Exception for docket {0}:".format(docketstr))
             print(e)
-
-    driver.close()
-
-    # Save all docket and court summary data to .csv
-    dirname = os.path.dirname(__file__)
-    os.mkdir(os.path.join(dirname, "tmp/parsed_docket_data"))
-    filename = "tmp/parsed_docket_data/docket-data-{0}.csv".format(time.strftime("%Y-%m-%d-%H%M%S"))
-    filepath = os.path.join(dirname, filename)
+            failedDockets.append(docketstr)
+            
+    driver.close()               
     
-    final = pd.DataFrame(parsedData)
-    final.to_csv(filepath, index=False)
+    # Save docket and court summary data to two .csv files
+    dirname = os.path.dirname(__file__)
+    tmpdir = "tmp/parsed_docket_data"
+    os.mkdir(os.path.join(dirname, tmpdir))
+    tag = time.strftime("%Y-%m-%d-%H%M%S")
+    
+    docketName = "{0}/docket-data-{1}.csv".format(tmpdir, tag)
+    courtName = "{0}/court-data-{1}.csv".format(tmpdir, tag)
+    docketPath = os.path.join(dirname, docketName)
+    courtPath = os.path.join(dirname, courtName)
+    docketDF = pd.DataFrame(parsedDockets)
+    courtDF = pd.DataFrame(parsedDockets)
+    docketDF.to_csv(docketPath, index=False)
+    courtDF.to_csv(courtPath, index=False)
+    
+    if len(failedDockets) > 0:
+        print("{0} dockets could not be downloaded/parsed:".format(len(failedDockets)))
+        print(", ".join(failedDockets))
 
-    return
 
-
-def test_download(testfile='', outfile='download_test'):
-    ''' Test download function given csv of [docket_link, court_link, docket_no] '''
+def test_download_and_parse(testfile='', outfile='download_test'):
+    ''' Test download function on .csv containing [docket_link, court_link, docket_no] '''
 
     cwd = os.path.dirname(__file__)
     savedir = os.path.join(cwd,'tmp/')
@@ -169,5 +216,4 @@ def test_download(testfile='', outfile='download_test'):
 
 
 if __name__=="__main__":
-    main()
-    #test_download()
+    argh.dispatch_command(main)
