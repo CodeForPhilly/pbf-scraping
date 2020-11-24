@@ -3,6 +3,7 @@ import re
 import numpy as np
 import pdfquery
 import pickle
+from offense_category import offense_dict
 
 # Helper functions -----------------------------------------------------------
 def query_contains(page, searchTerm):
@@ -194,20 +195,13 @@ def get_magistrate(pdf, pages):
     return magistrate
 
 def get_offense_type(statute):
-    """
-    parses statute information and gets offense type 
-    """
+    """ parses statute information and gets offense type """
     # input: (list of strings) statute output of 'get_charges'
     # output: (list of strings) offense type 
     offense_type = []
 
-    # read offense category dictionary
-    with open('offense_category.pickle', 'rb') as handle:
-        offense_category = pickle.load(handle)
-
     # find title and chapter numbers of offenses
     for item in statute:
-        # remove whitespaces
         statute_idx = item.replace("."," ")
         statute_idx = statute_idx.replace("-"," ")
         statute_idx = statute_idx.replace('§'," ")
@@ -216,18 +210,16 @@ def get_offense_type(statute):
         # get title 
         title = statute_idx[0]
 
-        # get chapter
-        # default chapter
+        # get default chapter
         chapter = statute_idx[1][:2]
 
-        # edge cases
+        # adjust chapter numbers
         if title == '0':
             chapter = '0'
         if title == '18':
             if len(statute_idx[1]) == 4:
                 chapter = statute_idx[1][:2]
             else:
-                #print(statute_idx[1])
                 chapter = statute_idx[1][:1]
         elif title == '35':
             chapter = statute_idx[1]
@@ -243,10 +235,10 @@ def get_offense_type(statute):
                 chapter = '3'
             else:
                 chapter = statute_idx[1][:2]
-
-        # write exception handling for when the given idx cannot be found
-        if (int(title), int(chapter)) in offense_category.keys():
-            offense_type.append(offense_category[(int(title), int(chapter))])
+        
+        # find offense type
+        if (int(title), int(chapter)) in offense_dict.keys():
+            offense_type.append(offense_dict[(int(title), int(chapter))])
         else:
             offense_type.append('NA')
             print('Warning: could not parse statute title ' + title + ' chapter ' + chapter)
