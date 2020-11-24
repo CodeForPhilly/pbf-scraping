@@ -165,7 +165,7 @@ def parse_pdf(filename, text):
     pdfObj = pdfquery.PDFQuery(filename)
     pdfObj.load(pages)
     # Use PDFQuery object to find location on page where the information appears
-    parsedData['offenses'],parsedData['offense_date'],parsedData['statute'] = funcs.get_charges(pdfObj, pages_charges)
+    parsedData['offenses'],parsedData['offense_date'],parsedData['statute'],parsedData['offense_type'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
     parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
     parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
