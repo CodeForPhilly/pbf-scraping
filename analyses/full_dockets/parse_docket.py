@@ -177,6 +177,7 @@ def parse_pdf(filename, text):
 
 @argh.arg("--testdir", help="Directory where test files are located")
 @argh.arg("--outfile", help="Filename for output file [outfile].csv")
+@argh.arg("--failed", help="Filename for failed file [failed].csv")
 def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
     """ Test scrape_pdf and parse_pdf.
     
