@@ -1,9 +1,13 @@
-import pdfquery
-import PyPDF2
 import re
 import os
 import argh
 import pandas as pd
+import pdfquery
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from io import StringIO
 import funcs_parse as funcs
 
 
@@ -32,19 +36,23 @@ def scrape_pdf(filepath):
         text (string): entire document
     """
     
-    fileObj = open(filepath, 'rb')
-    text = ''
-    try:
-        pdfReader = PyPDF2.PdfFileReader(fileObj)
-    except:
-        print("Warning: skipping invalid pdf {0}".format(os.path.basename(filepath)))
-        return text
-    
-    num_pages = pdfReader.numPages
-    for i in range(num_pages):
-        pageObj = pdfReader.getPage(i)
-        text += pageObj.extractText()
-        
+    rsrcmgr = PDFResourceManager()
+    sio = StringIO()
+    codec = 'utf-8'
+    laparams = LAParams()
+    device = TextConverter(rsrcmgr, sio, codec=codec, laparams=laparams)
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+ 
+    fp = open(filepath, 'rb')
+    for page in PDFPage.get_pages(fp):
+        interpreter.process_page(page)
+    fp.close()
+
+    text = sio.getvalue()
+
+    device.close()
+    sio.close()
+
     return text
 
 
@@ -108,11 +116,8 @@ def parse_pdf(filename, text):
         return {}
 
     # Extract some fields directly using regexp
-    parsePatterns = {'docket_no':   r"MC-\d{2}-CR-\d{7}-\d{4}",
-                     'dob':     r"Date Of Birth:(.*?)City",
-                     'arrest_date': r"Arrest Date:(.*?)(?<=\d{2}\/\d{2}\/\d{4})",
-                     'case_status': r"Case Status:(.*?)Arrest",
-                     'arresting_officer': r"Arresting Officer :(.*?)Complaint\/Incident"}
+    parsePatterns = {'docket_no':   r"MC-\d{2}-CR-\d{7}-\d{4}"}
+
     for key, value in parsePatterns.items():
         try:
             parsedData[key] = re.findall(value, text, re.DOTALL)[0].strip()
@@ -122,10 +127,7 @@ def parse_pdf(filename, text):
 
     # Extract some fields using regexp plus further parsing:
     specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)",
-                       'attorney_type': r"(Public|Private|Court Appointed)",
-                       'prelim':  r"(?<=Calendar Event Type )(.*?)(?=Scheduled)",
-                       'date':    r"\d{2}\/\d{2}\/\d{4}",
-                       'time':    r"((1[0-2]|0?[1-9]):([0-5][0-9]) ?([AaPp][Mm]))"}    
+                       'attorney_type': r"(Public|Private|Court Appointed)"}    
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
     if len(data_attorney) > 0:
         data_attorney = data_attorney[0]
@@ -143,49 +145,54 @@ def parse_pdf(filename, text):
         print('Warning: could not parse {0}'.format('attorney'))
         parsedData['attorney'] = ''
         parsedData['attorney_type'] = ''
-    # Note: though this is structured as if multiple events might be found, the
-    # 'prelim' regex as defined will only find the first event. Is this the
-    # intended behavior?
-    prelim = re.findall(specialPatterns['prelim'], text, re.DOTALL)
-    if len(prelim) > 0:
-        parsedData['prelim_hearing_date'] = re.findall(specialPatterns['date'], str(prelim))[0]
-        parsedData['prelim_hearing_time'] = re.findall(specialPatterns['time'], str(prelim))[0][0]
-    else: 
-        print('Warning: could not parse {0}'.format('prelim hearing date/time'))
-        parsedData['prelim_hearing_date'] = ''
-        parsedData['prelim_hearing_time'] = ''
         
     # Extract remaining fields using pdfquery: 
     # Create PDFQuery object, in addition to given text, for scraping from columns
     pages_charges = funcs.find_pages(filename,'Statute Description')
     pages_bail_set = funcs.find_pages(filename,'Filed By')
     pages_bail_info = funcs.find_pages(filename,'Bail Posting Status')
+    pages_dob = funcs.find_pages(filename,'Date Of Birth:')
     pages_zip = funcs.find_pages(filename,'Zip:')
-    pages = list(set(pages_charges + pages_bail_set + pages_bail_info + pages_zip))
+    pages_arresting_officer = funcs.find_pages(filename,'Arresting Officer:')
+    pages_status = funcs.find_pages(filename,'Case Status')
+    pages_prelim_hearing = funcs.find_pages(filename,'Event Type')
+ 
+    pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_dob+pages_zip+pages_arresting_officer+pages_status+pages_prelim_hearing))
+  
     pdfObj = pdfquery.PDFQuery(filename)
     pdfObj.load(pages)
+    
     # Use PDFQuery object to find location on page where the information appears
     parsedData['offenses'],parsedData['offense_date'],parsedData['statute'],parsedData['offense_type'] = funcs.get_charges(pdfObj, pages_charges)
-    parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
     parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
     parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
-    
+    parsedData['dob'] = funcs.get_dob(pdfObj,pages_dob)
+    parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
+    parsedData['arresting_officer'] = funcs.get_arresting_officer(pdfObj,pages_arresting_officer)
+    parsedData['case_status'],parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
+    parsedData['prelim_hearing_dt'],parsedData['prelim_hearing_time']  = funcs.get_prelim_hearing(pdfObj,pages_prelim_hearing)
+
     return parsedData
 
 
 @argh.arg("--testdir", help="Directory where test files are located")
 @argh.arg("--outfile", help="Filename for output file [outfile].csv")
-def test_scrape_and_parse(testdir='', outfile='docket_test'):
+def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
     """ Test scrape_pdf and parse_pdf.
     
         TODO: generate test set of pdf:csv pairs and update this function to
         automatically compare the parsed output to the validated output, instead
         of dumping into csv for manual checking"""
 
+    f_failed = open('{0}.txt'.format(failed), "w")
+ 
+
     if testdir == '':
         cwd = os.path.dirname(__file__)
         testdir = os.path.join(cwd,'tmp/dockets/')
         savedir = os.path.join(cwd,'tmp/')
+    else:
+        savedir = testdir
 
     parsedDockets = []
     countAll = 0
@@ -198,9 +205,11 @@ def test_scrape_and_parse(testdir='', outfile='docket_test'):
             if data != {}:
                 parsedDockets.append(data)
         except:
+            f_failed.write('{}   FAILED\n'.format(file))
             print('Failed: {0}'.format(file))
             countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
+    f_failed.close()
 
     final = pd.DataFrame(parsedDockets)
     final.to_csv(os.path.join(savedir, '{0}.csv'.format(outfile)), index=False)
