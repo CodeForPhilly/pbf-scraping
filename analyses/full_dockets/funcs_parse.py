@@ -24,7 +24,7 @@ def query_line(page, bounds):
 
 
 def find_pages(filename, string):
-    """ Return list of page numbers of filename (PDF) in which string is found  """
+    """ Return list of page numbers of filename (PDF) in which string is found """
 
     rsrcmgr = PDFResourceManager()
     codec = 'utf-8'
@@ -47,9 +47,7 @@ def find_pages(filename, string):
     return pages
 
 def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
-    """ Return list of charges, list of statues, and date
-        
-        TODO: try to reduce the amount of code, get rid of magic numbers """
+    """ Return list of charges, list of statues, and date """
 
     x_left = 0
     x_right = 80 # Or 70?
@@ -214,9 +212,11 @@ def get_magistrate(pdf, pages):
 
 
 def get_offense_type(statute):
-    """ Parse statute information and gets offense type """
-    # input: (list of strings) statute output of 'get_charges'
-    # output: (list of strings) offense type 
+    """ Parse statute information and get offense type 
+        input: (list of strings) statute output of 'get_charges'
+        output: (list of strings) offense type 
+    """
+
     offense_type = []
 
     # find title and chapter numbers of offenses
