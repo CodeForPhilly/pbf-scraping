@@ -28,7 +28,7 @@ def scrape_and_parse_pdf(filepath):
 
 def scrape_pdf(filepath):
     """ 
-    Scrapes the PDF, extracting text page by page, then cleans output
+    Scrapes the PDF, extracting text page by page
 
     Parameters: 
         filename (string): path to the filename.pdf
@@ -42,13 +42,16 @@ def scrape_pdf(filepath):
     laparams = LAParams()
     device = TextConverter(rsrcmgr, sio, codec=codec, laparams=laparams)
     interpreter = PDFPageInterpreter(rsrcmgr, device)
- 
-    fp = open(filepath, 'rb')
-    for page in PDFPage.get_pages(fp):
-        interpreter.process_page(page)
-    fp.close()
 
-    text = sio.getvalue()
+    try:
+        with open(filepath, 'rb') as fp:
+            pages = PDFPage.get_pages(fp, check_extractable=True)
+            for page in pages:
+                interpreter.process_page(page)
+        text = sio.getvalue()
+    except:
+        print("Warning: skipping empty/unopenable file {0}".format(os.path.basename(filepath)))
+        text = ''
 
     device.close()
     sio.close()
@@ -134,11 +137,11 @@ def parse_pdf(filename, text):
         attorney_match = re.search(specialPatterns['attorney_type'], data_attorney)
         if attorney_match:
             attorney_type = attorney_match.group(0).strip()
-            attorney_information = data_attorney.split(attorney_type)[0]
+            attorney_information = data_attorney.split(attorney_type)[0].strip()
         else:
             print('Warning: could not parse {0}'.format('attorney type'))
             attorney_type = ''
-            attorney_information = data_attorney
+            attorney_information = data_attorney.strip()
         parsedData['attorney'] = attorney_information
         parsedData['attorney_type'] = attorney_type
     else:
@@ -158,7 +161,6 @@ def parse_pdf(filename, text):
     pages_prelim_hearing = funcs.find_pages(filename,'Event Type')
  
     pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_dob+pages_zip+pages_arresting_officer+pages_status+pages_prelim_hearing))
-  
     pdfObj = pdfquery.PDFQuery(filename)
     pdfObj.load(pages)
     
@@ -166,11 +168,11 @@ def parse_pdf(filename, text):
     parsedData['offenses'],parsedData['offense_date'],parsedData['statute'],parsedData['offense_type'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
     parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
-    parsedData['dob'] = funcs.get_dob(pdfObj,pages_dob)
+    parsedData['dob'] = funcs.get_dob(pdfObj, pages_dob)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
-    parsedData['arresting_officer'] = funcs.get_arresting_officer(pdfObj,pages_arresting_officer)
+    parsedData['arresting_officer'] = funcs.get_arresting_officer(pdfObj, pages_arresting_officer)
     parsedData['case_status'],parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
-    parsedData['prelim_hearing_dt'],parsedData['prelim_hearing_time']  = funcs.get_prelim_hearing(pdfObj,pages_prelim_hearing)
+    parsedData['prelim_hearing_dt'],parsedData['prelim_hearing_time']  = funcs.get_prelim_hearing(pdfObj, pages_prelim_hearing)
 
     return parsedData
 
@@ -186,7 +188,6 @@ def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
         of dumping into csv for manual checking"""
 
     f_failed = open('{0}.txt'.format(failed), "w")
- 
 
     if testdir == '':
         cwd = os.path.dirname(__file__)
@@ -210,6 +211,7 @@ def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
             print('Failed: {0}'.format(file))
             countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
+    
     f_failed.close()
 
     final = pd.DataFrame(parsedDockets)
