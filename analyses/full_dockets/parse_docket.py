@@ -146,9 +146,9 @@ def parse_pdf(filename, text):
             attorney_type = attorney_match.group(0).strip()
             attorney_information = data_attorney.split(attorney_type)[0].strip()
         else:
-            if len(data_attorney) == 0:
-                print("No attorney information listed")
-            else:
+            if len(data_attorney) != 0:
+                # In some cases, no attorney information is listed (len(data_attorney) == 0)
+                # but in that case no warning should be raised
                 print('Warning: could not parse {0}'.format('attorney type'))
             attorney_type = ''
             attorney_information = data_attorney.strip()
