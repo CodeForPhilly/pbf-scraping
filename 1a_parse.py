@@ -2,7 +2,6 @@ import pandas as pd
 import argh
 import datetime
 import os
-import glob
 import sys
 
 def main():
