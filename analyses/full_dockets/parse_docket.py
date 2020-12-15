@@ -129,26 +129,36 @@ def parse_pdf(filename, text):
             parsedData[key] = ''
 
     # Extract some fields using regexp plus further parsing:
-    specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION Name:)(.*?)(?=\d|Supreme)",
+    specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION)(.*?)(?=\d|Supreme)",
                        'attorney_type': r"(Public|Private|Court Appointed)"}    
+    badPrefixes = ["Name:", "Philadelphia County District Attorney's Office Prosecutor"]
+    
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
-    if len(data_attorney) > 0:
-        data_attorney = data_attorney[0]
+    if len(data_attorney) > 0: # skips empty space also
+        data_attorney = data_attorney[0].strip()
+
+        for prefix in badPrefixes:
+            if data_attorney.startswith(prefix):
+                data_attorney = data_attorney[len(prefix):].strip()
+            
         attorney_match = re.search(specialPatterns['attorney_type'], data_attorney)
         if attorney_match:
             attorney_type = attorney_match.group(0).strip()
             attorney_information = data_attorney.split(attorney_type)[0].strip()
         else:
-            print('Warning: could not parse {0}'.format('attorney type'))
+            if len(data_attorney) != 0:
+                # In some cases, no attorney information is listed (len(data_attorney) == 0)
+                # but in that case no warning should be raised
+                print('Warning: could not parse {0}'.format('attorney type'))
             attorney_type = ''
             attorney_information = data_attorney.strip()
         parsedData['attorney'] = attorney_information
         parsedData['attorney_type'] = attorney_type
     else:
-        print('Warning: could not parse {0}'.format('attorney'))
+        print('Warning: could not parse attorney')
         parsedData['attorney'] = ''
         parsedData['attorney_type'] = ''
-        
+    
     # Extract remaining fields using pdfquery: 
     # Create PDFQuery object, in addition to given text, for scraping from columns
     pages_charges = funcs.find_pages(filename,'Statute Description')
