@@ -1,6 +1,5 @@
 # create a dictionary of statute info and offense type 
 # key: (title, chapter)
-import pickle
 
 offense_dict = {}
 ### Unknown statute
