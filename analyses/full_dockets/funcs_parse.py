@@ -343,9 +343,6 @@ def get_prelim_hearing(pdf, pages):
     prelim_hearing_date = pdf.pq(query_line(p, [x1, y1-20, x2, y1+5])).text()
     prelim_hearing_time = pdf.pq(query_line(p, [x2, y1-20, x3, y1+5])).text()
 
-    print("\t\t" + prelim_hearing_date)
-    print("\t\t" + prelim_hearing_time)
-
     return prelim_hearing_date, prelim_hearing_time
 
 def get_arresting_officer(pdf, pages):
