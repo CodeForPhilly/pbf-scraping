@@ -294,7 +294,7 @@ def get_charges(pdf, pages):
     offense_type = get_offense_type(statuteList)
     return chargeList, date, statuteList, offense_type
 
-def get_dob(pdf,pages):
+def get_dob(pdf, pages):
     p = pages[0]
     info_1 = pdf.pq(query_contains_line(p,'Date Of Birth:'))
     x1_1 = float(info_1.attr('x1'))
@@ -308,7 +308,7 @@ def get_dob(pdf,pages):
     return dob
 
 
-def get_status(pdf,pages):
+def get_status(pdf, pages):
     """ Return case status and arrest date"""
 
     p = pages[0]
@@ -327,24 +327,28 @@ def get_status(pdf,pages):
     return case_status,arrest_date
 
 
-def get_prelim_hearing(pdf,pages):
+def get_prelim_hearing(pdf, pages):
     """ Return preliminary arraignment date and time """
 
     p = pages[0]
     info_1 = pdf.pq(query_contains_box(p,'Schedule Start Date'))
-    x1_0 = float(info_1.attr('x0'))
-    y1_0 = float(info_1.attr('y0'))
+    x1 = float(info_1.attr('x0'))
     info_2 = pdf.pq(query_contains_box(p,'Start Time'))
-    x2_0 = float(info_2.attr('x0'))
+    x2 = float(info_2.attr('x0'))
     info_3 = pdf.pq(query_contains_line(p,'Room'))
-    x3_0 = float(info_3.attr('x0'))
+    x3 = float(info_3.attr('x0'))
+    info_y = pdf.pq(query_contains_box(p,'Preliminary Arraignment'))
+    y1 = float(info_y.attr('y1'))
 
-    prelim_hearing_date = pdf.pq(query_line(p, [x1_0, y1_0-30, x2_0, y1_0])).text()
-    prelim_hearing_time = pdf.pq(query_line(p, [x2_0, y1_0-30, x3_0, y1_0])).text()
+    prelim_hearing_date = pdf.pq(query_line(p, [x1, y1-20, x2, y1+5])).text()
+    prelim_hearing_time = pdf.pq(query_line(p, [x2, y1-20, x3, y1+5])).text()
+
+    print("\t\t" + prelim_hearing_date)
+    print("\t\t" + prelim_hearing_time)
 
     return prelim_hearing_date, prelim_hearing_time
 
-def get_arresting_officer(pdf,pages):
+def get_arresting_officer(pdf, pages):
     """ Return arresting officer """
     p = pages[0]
     info_1 = pdf.pq(query_contains_line(p,'Arresting Officer:'))
