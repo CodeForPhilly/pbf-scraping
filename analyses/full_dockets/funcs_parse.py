@@ -70,7 +70,9 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
             y = y - delta
             info = pdf.pq(query_line(page, [x_left, y, x_right, y_top])).text().split(' ') #70
             if len(info[0]) > 0:
-                if int(info[-1]) == lineNums[k]:
+                info_int = [int(x) for x in info]
+                info_int.sort()
+                if info_int[-1] == lineNums[k]:
                     yArray_bottom[k-h] = y
                 else:
                     if k <= nLines - 1:
