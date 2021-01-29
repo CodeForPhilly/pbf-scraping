@@ -166,10 +166,10 @@ def get_bail_info(pdf, pages):
         x5_0 = float(info_5.attr('x0'))
         bail_date = pdf.pq(query_box(p, [x4_1, y3_1, x5_0, y1_0])).text()
         bail_type = pdf.pq(query_box(p, [x5_0, y3_1, x2_0, y1_0])).text()
-        bail_date = bail_date.split(' ')[-1]
-        bail_type = bail_type.split(' ')[-1]
+        bail_date = bail_date.split(' ')[0]
+        bail_type = bail_type.split(' ')[0]
         bail_info = pdf.pq(query_box(p, [x2_1, y3_1, x1_0, y1_0])).text()
-        bail_amount = float(bail_info.split('$')[-1].replace(',',''))
+        bail_amount = float(bail_info.split('$')[1].replace(',',''))
         bail_paid = 0
         check_posted = pdf.pq(query_line(p, [x1_0, y3_1, x1_1, y1_0])).text()
         
