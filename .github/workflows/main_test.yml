@@ -4,7 +4,7 @@ name: Try to run "Main" Action In Container
 on:
   schedule: 
     # Runs every day at 6am EDT (cron in UTC)
-    - cron: '0 13 * * *'
+  #  - cron: '0 13 * * *'
   workflow_dispatch:
     inputs:
       date:
