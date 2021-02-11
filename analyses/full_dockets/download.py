@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import Select
 from sqlalchemy import create_engine
 import requests
 import time
@@ -76,24 +77,19 @@ def get_pdf_links(docketstr, driver=None):
         closeDriver = True
         driver = initialize_webdriver()
 
-    docketNumber = docketstr.split("-")
+    driver.get("https://ujsportal.pacourts.us/CaseSearch")
     
-    elementBase = "ctl00_ctl00_ctl00_cphMain_cphDynamicContent_cphDynamicContent_docketNumberCriteriaControl"
-    driver.get("https://ujsportal.pacourts.us/DocketSheets/MC.aspx")
+    # Execute docket search
+    selector = Select(driver.find_element_by_name("SearchBy"))
+    selector.select_by_visible_text("Docket Number")
+    driver.find_element_by_name("DocketNumber").send_keys(docketstr)
+    driver.find_element_by_id("btnSearch").click()
+    
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    driver.find_element_by_id("{0}_docketNumberControl_mddlCourt".format(elementBase)).send_keys(docketNumber[0])
-    driver.find_element_by_id("{0}_docketNumberControl_mtxtCounty".format(elementBase)).send_keys(docketNumber[1])
-    driver.find_element_by_id("{0}_docketNumberControl_mddlDocketType".format(elementBase)).send_keys(docketNumber[2])
-    driver.find_element_by_id("{0}_docketNumberControl_mtxtSequenceNumber".format(elementBase)).send_keys(docketNumber[3])
-    driver.find_element_by_id("{0}_docketNumberControl_mtxtYear".format(elementBase)).send_keys(docketNumber[4])
-    driver.find_element_by_id("{0}_searchCommandControl".format(elementBase)).click()
-    docketDocument = driver.find_element_by_xpath("/html/body/form/div[3]/div[2]/table/tbody/tr/td/div[2]/div/div[3]/table/tbody/tr/td[1]/div/div/table/tbody/tr[1]/td/table/tbody/tr/td/a")
-    courtSummary = driver.find_element_by_xpath("/html/body/form/div[3]/div[2]/table/tbody/tr/td/div[2]/div/div[3]/table/tbody/tr/td[1]/div/div/table/tbody/tr[2]/td/table/tbody/tr/td/a")
-    hover = ActionChains(driver).move_to_element(driver.find_element_by_xpath("/html/body/form/div[3]/div[2]/table/tbody/tr/td/div[2]/div/div[3]/table/tbody/tr/td[1]/div/table/tbody/tr/td/table/tbody/tr/td/a/img")).move_to_element(docketDocument)
-    hover.perform()
 
-    docketLink = docketDocument.get_attribute("href")
-    courtLink = courtSummary.get_attribute("href")
+    # Get PDF links from results   
+    docketLink = driver.find_element_by_xpath("//a[contains(@href, 'DocketSheet')]").get_attribute("href")
+    courtLink = driver.find_element_by_xpath("//a[contains(@href, 'CourtSummary')]").get_attribute("href")
     
     if closeDriver:
         driver.close()
@@ -176,7 +172,7 @@ def main(docket='', awsid='', awskey=''):
     docketPath = os.path.join(dirname, docketName)
     courtPath = os.path.join(dirname, courtName)
     docketDF = pd.DataFrame(parsedDockets)
-    courtDF = pd.DataFrame(parsedDockets)
+    courtDF = pd.DataFrame(parsedCourts)
     docketDF.to_csv(docketPath, index=False)
     courtDF.to_csv(courtPath, index=False)
     
