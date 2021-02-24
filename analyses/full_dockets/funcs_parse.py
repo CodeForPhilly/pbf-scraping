@@ -138,7 +138,7 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
         data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
-        if re.search("Bail", data_cp, flags=re.IGNORECASE) and not isBailFound:
+        if re.search("Bail", data_cp, flags=re.IGNORECASE) and not isBailFound and not re.search("Posted", data_cp, flags=re.IGNORECASE):
             isBailFound = True
             magistrate = data_filedBy.strip()
                 
