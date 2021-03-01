@@ -12,15 +12,17 @@ from offense_category import offense_dict
 def query_contains_box(page, searchTerm):
     return 'LTPage[page_index="{}"] LTTextBoxHorizontal:contains("{}")'.format(page, searchTerm)
 
+
 def query_contains_line(page, searchTerm):
     return 'LTPage[page_index="{}"] LTTextLineHorizontal:contains("{}")'.format(page, searchTerm)
+
 
 def query_box(page, bounds):
     return 'LTPage[page_index="{}"] LTTextBoxHorizontal:in_bbox("{}, {}, {}, {}")'.format(page, *bounds)
 
+
 def query_line(page, bounds):
     return 'LTPage[page_index="{}"] LTTextLineHorizontal:in_bbox("{}, {}, {}, {}")'.format(page, *bounds)
-
 
 
 def find_pages(filename, string):
@@ -32,13 +34,13 @@ def find_pages(filename, string):
     pages = []
 
     fp = open(filename, 'rb')
-    for i,page in enumerate(PDFPage.get_pages(fp)):
+    for i, page in enumerate(PDFPage.get_pages(fp)):
         sio = StringIO()
         device = TextConverter(rsrcmgr, sio, codec=codec, laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         interpreter.process_page(page)
         text = sio.getvalue()
-        if re.search(string,text):
+        if re.search(string, text):
             pages.append(i)
         device.close()
         sio.close()
@@ -46,68 +48,69 @@ def find_pages(filename, string):
 
     return pages
 
+
 def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
     """ Return list of charges, list of statues, and date """
 
     x_left = 0
-    x_right = 80 # Or 70?
+    x_right = 80  # Or 70?
 
     charges = []
     statutes = []
     date = ''
-    lineNums = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y_top])).text().split(' ') #80
+    lineNums = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y_top])).text().split(' ')  # 80
     if lineNums[0] != '':
         lineNums = [int(x) for x in lineNums]
         nLines = len(lineNums)
-        
+
         h = 0
         k = 0
         yArray_bottom = np.zeros(nLines)
         yArray_top = np.zeros(nLines)
-        y = y_top  
+        y = y_top
         lineNums.sort()
         while y > y_bottom:
             y = y - delta
-            info = pdf.pq(query_line(page, [x_left, y, x_right, y_top])).text().split(' ') #70
+            info = pdf.pq(query_line(page, [x_left, y, x_right, y_top])).text().split(' ')  # 70
             if len(info[0]) > 0:
                 info_int = [int(x) for x in info]
                 info_int.sort()
                 if info_int[-1] == lineNums[k]:
-                    yArray_bottom[k-h] = y
+                    yArray_bottom[k - h] = y
                 else:
                     if k <= nLines - 1:
-                        k = k+1
+                        k = k + 1
 
         y = y_bottom
         index = 0
         a = 0
-        for i in range(int((y_top-y_bottom)/delta)):
-            if abs(a-1) > len(lineNums):
+        for i in range(int((y_top - y_bottom) / delta)):
+            if abs(a - 1) > len(lineNums):
                 break
             y = y + delta
-            info = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y])).text()    #70
+            info = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y])).text()  # 70
             info = (re.sub("\s+", ",", info.strip())).split(',')
             if len(info[0]) > 0:
-                if lineNums[a-1] in [int(x) for x in info]:
-                    yArray_top[-index-1] = y
-                    index = index+1
-                    a = a-1
-                    
+                if lineNums[a - 1] in [int(x) for x in info]:
+                    yArray_top[-index - 1] = y
+                    index = index + 1
+                    a = a - 1
+
         yArray_top[0] = y_top
         yArray_bottom[-1] = y_bottom
-        for y0, y1 in zip(yArray_bottom,yArray_top):
+        for y0, y1 in zip(yArray_bottom, yArray_top):
             data_charges = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
             data_statutes = pdf.pq(query_line(page, [x3, y0, x0, y1])).text()
             date = pdf.pq(query_line(page, [x1, y0, x2, y1])).text()
             charges.append(data_charges)
             statutes.append(data_statutes)
-            
+
     return charges, date, statutes
 
 
 def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
     """ Find magistrate and whether bail is set or otherwise """
-    
+
     magistrate = ''
 
     # Find lines
@@ -118,19 +121,19 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
     yArray_bottom = np.zeros(n)
     yArray_top = np.zeros(n)
     k = 1
-    y = y_bottom  
+    y = y_bottom
     new_y_bottom = y_bottom
     while (y < y_top) & (k <= n):
         y = y + delta
-        info = pdf.pq(query_line(page, [x_left, new_y_bottom, x_right, y])).text()   
+        info = pdf.pq(query_line(page, [x_left, new_y_bottom, x_right, y])).text()
         if len(info) > 0:
-            if int(info[0]) == int(lineNums[-1-(k-1)]):
-                yArray_top[-1-(k-1)] = y
+            if int(info[0]) == int(lineNums[-1 - (k - 1)]):
+                yArray_top[-1 - (k - 1)] = y
                 new_y_bottom = y
-                k = k+1
-                    
+                k = k + 1
+
     yArray_bottom[-1] = y_bottom
-    yArray_bottom[0:n-1] = yArray_top[1:]
+    yArray_bottom[0:n - 1] = yArray_top[1:]
 
     # Find first line referring to bail decision being made (set or denied)
     isBailFound = False
@@ -138,12 +141,14 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
         data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
-        if re.search("Bail Set", data_cp, flags=re.IGNORECASE) or re.search("Bail Denied", data_cp, flags=re.IGNORECASE) and not isBailFound and not re.search("Posted", data_cp, flags=re.IGNORECASE):
+        if re.search("Bail Set", data_cp, flags=re.IGNORECASE) or re.search("Bail Denied", data_cp,
+                                                                            flags=re.IGNORECASE) and not isBailFound and not re.search(
+                "Posted", data_cp, flags=re.IGNORECASE):
             isBailFound = True
             magistrate = data_filedBy.strip()
-            #sometimes bail is changed over the course of a case, but we're interested in the initial bail, so break out of the loop if we found it.
+            # sometimes bail is changed over the course of a case, but we're interested in the initial bail, so break out of the loop if we found it.
             break
-                
+
     return magistrate
 
 
@@ -167,18 +172,35 @@ def get_bail_info(pdf, pages):
         info_5 = pdf.pq(query_contains_line(p, 'Bail Type'))
         x5_0 = float(info_5.attr('x0'))
         bail_date = pdf.pq(query_box(p, [x4_1, y3_1, x5_0, y1_0])).text()
+
         bail_type = pdf.pq(query_box(p, [x5_0, y3_1, x2_0, y1_0])).text()
-        bail_date = bail_date.split(' ')[0]
-        bail_type = bail_type.split(' ')[0]
+        bail_date_list = bail_date.split(' ')
+
+        earliest_bail_index = 0
+
+        # if multiple bail dates in the list, take the earliest one
+        if len(bail_date_list) > 1:
+            bail_date_sorted = bail_date_list.copy()
+            bail_date_sorted.sort()
+            earliest_value = bail_date_sorted[0]
+            earliest_bail_index = bail_date_list.index(earliest_value)
+
+        final_bail_date = bail_date_list[earliest_bail_index]
+        bail_type = bail_type.split(' ')[earliest_bail_index]
         bail_info = pdf.pq(query_box(p, [x2_1, y3_1, x1_0, y1_0])).text()
-        bail_amount = float(bail_info.split('$')[1].replace(',',''))
+
+        # split the list of values by dollar sign and drop the first value since it's blank
+        bail_info_list = bail_info.split('$')
+        bail_info_list.remove(bail_info_list[0])
+        bail_amount = float(bail_info_list[earliest_bail_index].replace(',', ''))
+
         bail_paid = 0
         check_posted = pdf.pq(query_line(p, [x1_0, y3_1, x1_1, y1_0])).text()
-        
-        if 'Posted' in check_posted:
-            bail_paid = 0.1*bail_amount
 
-    return bail_amount, bail_paid, bail_date, bail_type 
+        if 'Posted' in check_posted:
+            bail_paid = 0.1 * bail_amount
+
+    return bail_amount, bail_paid, final_bail_date, bail_type
 
 
 def get_zip(pdf, page):
@@ -191,18 +213,18 @@ def get_zip(pdf, page):
 
     return zip_code
 
-                 
+
 def get_magistrate(pdf, pages):
     """ Return name of person who filed document regarding bail """
-    
+
     magistrate = ''
     for p in pages:
-    	
-    	#Handles edge case where if bail is set twice in a case it takes the earlier one
+
+        # Handles edge case where if bail is set twice in a case it takes the earlier one
         if magistrate != '':
-            break 
-    
-        # Top of section
+            break
+
+            # Top of section
         info_1 = pdf.pq(query_contains_line(p, 'Filed By'))
         x0 = float(info_1.attr('x0'))
         y0 = float(info_1.attr('y0'))
@@ -212,13 +234,13 @@ def get_magistrate(pdf, pages):
             info_2 = pdf.pq(query_contains_line(p, 'CPCMS'))
         x1 = x0 + 200
         y1 = float(info_2.attr('y1'))
-        
+
         magistrateData = bail_set_by(pdf, p, y1, y0, x0, x1)
         if magistrateData != '':
             magistrate = magistrateData
-            
+
     if magistrate == '':
-    	magistrate = 'No Magistrate Found'
+        magistrate = 'No Magistrate Found'
 
     return magistrate
 
@@ -233,11 +255,11 @@ def get_offense_type(statute):
 
     # find title and chapter numbers of offenses
     for item in statute:
-        statute_idx = item.replace("."," ")
-        statute_idx = statute_idx.replace("-"," ")
-        statute_idx = statute_idx.replace('§'," ")
+        statute_idx = item.replace(".", " ")
+        statute_idx = statute_idx.replace("-", " ")
+        statute_idx = statute_idx.replace('§', " ")
         statute_idx = statute_idx.split()
-        
+
         # get title 
         title = statute_idx[0]
 
@@ -266,7 +288,7 @@ def get_offense_type(statute):
                 chapter = '3'
             else:
                 chapter = statute_idx[1][:2]
-        
+
         # find offense type
         if (int(title), int(chapter)) in offense_dict.keys():
             offense_type.append(offense_dict[(int(title), int(chapter))])
@@ -274,6 +296,7 @@ def get_offense_type(statute):
             offense_type.append('NA')
             print('Warning: could not parse statute title ' + title + ' chapter ' + chapter)
     return offense_type
+
 
 def get_charges(pdf, pages):
     """ Return the list of charges and statutes """
@@ -294,11 +317,11 @@ def get_charges(pdf, pages):
         # Offense date left and right
         info_3 = pdf.pq(query_contains_line(p, 'Offense Dt'))
         x3_0 = float(info_3.attr('x0'))
-        x3_1 = float(info_3.attr('x1'))+10
+        x3_1 = float(info_3.attr('x1')) + 10
         # Statute number left
-        #info_4 = pdf.pq(query_contains_line(p, 'Statute'))
-        x4_0 = x1_0 - 100 #float(info_4.attr('x0'))
-        
+        # info_4 = pdf.pq(query_contains_line(p, 'Statute'))
+        x4_0 = x1_0 - 100  # float(info_4.attr('x0'))
+
         charges, date, statutes = offense(pdf, p, y2_1, y1_0, x1_0, x3_0, x3_1, x4_0)
         chargeList.extend(charges)
         statuteList.extend(statutes)
@@ -306,16 +329,17 @@ def get_charges(pdf, pages):
     offense_type = get_offense_type(statuteList)
     return chargeList, date, statuteList, offense_type
 
+
 def get_dob(pdf, pages):
     p = pages[0]
-    info_1 = pdf.pq(query_contains_line(p,'Date Of Birth:'))
+    info_1 = pdf.pq(query_contains_line(p, 'Date Of Birth:'))
     x1_1 = float(info_1.attr('x1'))
     y1_0 = float(info_1.attr('y0'))
     y1_1 = float(info_1.attr('y1'))
-    info_2 = pdf.pq(query_contains_line(p,'City/State/Zip:'))
+    info_2 = pdf.pq(query_contains_line(p, 'City/State/Zip:'))
     x2_0 = float(info_2.attr('x0'))
 
-    dob = pdf.pq(query_line(p, [x1_1, y1_0-1, x2_0, y1_1+1])).text()
+    dob = pdf.pq(query_line(p, [x1_1, y1_0 - 1, x2_0, y1_1 + 1])).text()
 
     return dob
 
@@ -324,44 +348,44 @@ def get_status(pdf, pages):
     """ Return case status and arrest date"""
 
     p = pages[0]
-    info_1 = pdf.pq(query_contains_line(p,'Case Status:'))
+    info_1 = pdf.pq(query_contains_line(p, 'Case Status:'))
     x1_1 = float(info_1.attr('x1'))
     y1_0 = float(info_1.attr('y0'))
     y1_1 = float(info_1.attr('y1'))
-    info_2 = pdf.pq(query_contains_line(p,'Status Date'))
+    info_2 = pdf.pq(query_contains_line(p, 'Status Date'))
     x2_0 = float(info_2.attr('x0'))
-    info_3 = pdf.pq(query_contains_line(p,'Arrest Date:'))
+    info_3 = pdf.pq(query_contains_line(p, 'Arrest Date:'))
     x3_1 = float(info_3.attr('x1'))
 
-    case_status = pdf.pq(query_line(p, [x1_1, y1_0-1, x2_0, y1_1+1])).text()
-    arrest_date = pdf.pq(query_line(p, [x3_1, y1_0-1, x3_1+200, y1_1+1])).text()
+    case_status = pdf.pq(query_line(p, [x1_1, y1_0 - 1, x2_0, y1_1 + 1])).text()
+    arrest_date = pdf.pq(query_line(p, [x3_1, y1_0 - 1, x3_1 + 200, y1_1 + 1])).text()
 
-    return case_status,arrest_date
+    return case_status, arrest_date
 
 
 def get_prelim_hearing(pdf, pages):
     """ Return preliminary arraignment date and time """
 
     p = pages[0]
-    info_1 = pdf.pq(query_contains_box(p,'Schedule Start Date'))
+    info_1 = pdf.pq(query_contains_box(p, 'Schedule Start Date'))
     x1 = float(info_1.attr('x0'))
-    info_2 = pdf.pq(query_contains_box(p,'Start Time'))
+    info_2 = pdf.pq(query_contains_box(p, 'Start Time'))
     x2 = float(info_2.attr('x0'))
-    info_3 = pdf.pq(query_contains_line(p,'Room'))
+    info_3 = pdf.pq(query_contains_line(p, 'Room'))
     x3 = float(info_3.attr('x0'))
-    info_y = pdf.pq(query_contains_box(p,'Preliminary Arraignment'))
+    info_y = pdf.pq(query_contains_box(p, 'Preliminary Arraignment'))
     y1 = float(info_y.attr('y1'))
 
-    prelim_hearing_date = pdf.pq(query_line(p, [x1, y1-20, x2, y1+5])).text()
-    prelim_hearing_time = pdf.pq(query_line(p, [x2, y1-20, x3, y1+5])).text()
+    prelim_hearing_date = pdf.pq(query_line(p, [x1, y1 - 20, x2, y1 + 5])).text()
+    prelim_hearing_time = pdf.pq(query_line(p, [x2, y1 - 20, x3, y1 + 5])).text()
 
     return prelim_hearing_date, prelim_hearing_time
+
 
 def get_arresting_officer(pdf, pages):
     """ Return arresting officer """
     p = pages[0]
-    info_1 = pdf.pq(query_contains_line(p,'Arresting Officer:'))
+    info_1 = pdf.pq(query_contains_line(p, 'Arresting Officer:'))
     arresting_officer = info_1.text().split('Arresting Officer:')[1].strip()
 
     return arresting_officer
-
