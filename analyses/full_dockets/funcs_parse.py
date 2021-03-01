@@ -138,9 +138,11 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
         data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
-        if re.search("Bail", data_cp, flags=re.IGNORECASE) and not isBailFound and not re.search("Posted", data_cp, flags=re.IGNORECASE):
+        if re.search("Bail Set", data_cp, flags=re.IGNORECASE) or re.search("Bail Denied", data_cp, flags=re.IGNORECASE) and not isBailFound and not re.search("Posted", data_cp, flags=re.IGNORECASE):
             isBailFound = True
             magistrate = data_filedBy.strip()
+            #sometimes bail is changed over the course of a case, but we're interested in the initial bail, so break out of the loop if we found it.
+            break
                 
     return magistrate
 
@@ -195,6 +197,11 @@ def get_magistrate(pdf, pages):
     
     magistrate = ''
     for p in pages:
+    	
+    	#Handles edge case where if bail is set twice in a case it takes the earlier one
+        if magistrate != '':
+            break 
+    
         # Top of section
         info_1 = pdf.pq(query_contains_line(p, 'Filed By'))
         x0 = float(info_1.attr('x0'))
@@ -209,6 +216,9 @@ def get_magistrate(pdf, pages):
         magistrateData = bail_set_by(pdf, p, y1, y0, x0, x1)
         if magistrateData != '':
             magistrate = magistrateData
+            
+    if magistrate == '':
+    	magistrate = 'No Magistrate Found'
 
     return magistrate
 
