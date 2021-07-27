@@ -18,24 +18,25 @@ def scrape_and_parse_pdf(filepath):
         Returns:
             parsedData (dictionary): column_name:key_value pairs
         """
-    
-    text = scrape_pdf(filepath)        
+
+    text = scrape_pdf(filepath)
     text = clean_text(text)
+
     parsedData = parse_pdf(filepath, text)
-    
+
     return parsedData
 
 
 def scrape_pdf(filepath):
-    """ 
+    """
     Scrapes the PDF, extracting text page by page
 
-    Parameters: 
+    Parameters:
         filename (string): path to the filename.pdf
-    Returns: 
+    Returns:
         text (string): entire document
     """
-    
+
     rsrcmgr = PDFResourceManager()
     sio = StringIO()
     codec = 'utf-8'
@@ -60,27 +61,27 @@ def scrape_pdf(filepath):
 
 
 def clean_text(txt):
-    """ 
+    """
     Cleans document text according to some basic rules.
-    
+
     Be careful about modifications. The regex in subsequent functions
     depends on certain elements such as newline characters being removed
-    Parameters: 
+    Parameters:
         txt (string): Entire document as a string
-    Returns: 
+    Returns:
         txt (string): A cleaner version of the entire document
     """
-    
+
     if txt == '':
         return txt
-    
+
     # Replace unnecessary text with space (for newline) or empty char
     replacements = [('\n', ' '),
-                   ('CPCMS 9082', ''),
-                   ('MUNICIPAL COURT OF PHILADELPHIA COUNTY', '')]
+                    ('CPCMS 9082', ''),
+                    ('MUNICIPAL COURT OF PHILADELPHIA COUNTY', '')]
     for k, v in replacements:
         txt = txt.replace(k, v)
-    
+
     # Replace unnecessary text patterns with empty char
     substitutions = [r"Recent entries made(.*?)Section 9183",
                      r"Printed:([\s]*)\d{2}([\s]*)\/\d{2}\/\d{4}",
@@ -95,20 +96,20 @@ def clean_text(txt):
 
 
 def parse_pdf(filename, text):
-    """ 
+    """
     Parses specific elements from the string.
-    
+
     This methodology relies heavily on regex and is extremely brittle. Testing
     must be thorough in order to account for differences in format. If the
     format of the court systems changes, we can expect this entire function
     to break. We start by identifying sections of the document, and then we use
     secondary pattern matching to extract specific elements.
-    
+
     For easier regex debugging, see https://regex101.com/r/12KSAf/1/
-    
-    Parameters: 
+
+    Parameters:
         text (string): Cleaned document as a string
-    Returns: 
+    Returns:
         parsedData (dictionary): column heading:item value pairs for parsed items
     """
 
@@ -119,28 +120,30 @@ def parse_pdf(filename, text):
         return {}
 
     # Extract some fields directly using regexp
-    parsePatterns = {'docket_no':   r"MC-\d{2}-CR-\d{7}-\d{4}"}
+    parsePatterns = {'docket_no': r"(?:MC|CP)-\d{2}-CR-\d{7}-\d{4}"}
 
     for key, value in parsePatterns.items():
         try:
             parsedData[key] = re.findall(value, text, re.DOTALL)[0].strip()
+            print(parsedData[key])
+
         except:
             print('Warning: could not parse {0}'.format(key))
             parsedData[key] = ''
 
     # Extract some fields using regexp plus further parsing:
     specialPatterns = {'attorney': r"(?<=ATTORNEY INFORMATION)(.*?)(?=\d|Supreme)",
-                       'attorney_type': r"(Public|Private|Court Appointed)"}    
+                       'attorney_type': r"(Public|Private|Court Appointed)"}
     badPrefixes = ["Name:", "Philadelphia County District Attorney's Office Prosecutor"]
-    
+
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
-    if len(data_attorney) > 0: # skips empty space also
+    if len(data_attorney) > 0:  # skips empty space also
         data_attorney = data_attorney[0].strip()
 
         for prefix in badPrefixes:
             if data_attorney.startswith(prefix):
                 data_attorney = data_attorney[len(prefix):].strip()
-            
+
         attorney_match = re.search(specialPatterns['attorney_type'], data_attorney)
         if attorney_match:
             attorney_type = attorney_match.group(0).strip()
@@ -158,31 +161,40 @@ def parse_pdf(filename, text):
         print('Warning: could not parse attorney')
         parsedData['attorney'] = ''
         parsedData['attorney_type'] = ''
-    
-    # Extract remaining fields using pdfquery: 
+
+    # Extract remaining fields using pdfquery:
     # Create PDFQuery object, in addition to given text, for scraping from columns
-    pages_charges = funcs.find_pages(filename,'Statute Description')
-    pages_bail_set = funcs.find_pages(filename,'Filed By')
-    pages_bail_info = funcs.find_pages(filename,'Bail Posting Status')
-    pages_dob = funcs.find_pages(filename,'Date Of Birth:')
-    pages_zip = funcs.find_pages(filename,'Zip:')
-    pages_arresting_officer = funcs.find_pages(filename,'Arresting Officer:')
-    pages_status = funcs.find_pages(filename,'Case Status')
-    pages_prelim_hearing = funcs.find_pages(filename,'Event Type')
- 
-    pages = list(set(pages_charges+pages_bail_set+pages_bail_info+pages_dob+pages_zip+pages_arresting_officer+pages_status+pages_prelim_hearing))
+    pages_charges = funcs.find_pages(filename, 'Statute Description')
+    pages_bail_set = funcs.find_pages(filename, 'Filed By')
+    pages_bail_info = funcs.find_pages(filename, 'Bail Posting Status')
+    pages_dob = funcs.find_pages(filename, 'Date Of Birth:')
+    pages_zip = funcs.find_pages(filename, 'Zip:')
+    pages_arresting_officer = funcs.find_pages(filename, 'Arresting Officer:')
+    pages_status = funcs.find_pages(filename, 'Case Status')
+    pages_prelim_hearing = funcs.find_pages(filename, 'Event Type')
+
+    pages = list(set(
+        pages_charges + pages_bail_set + pages_bail_info + pages_dob + pages_zip + pages_arresting_officer + pages_status + pages_prelim_hearing))
     pdfObj = pdfquery.PDFQuery(filename)
     pdfObj.load(pages)
-    
+
     # Use PDFQuery object to find location on page where the information appears
-    parsedData['offenses'],parsedData['offense_date'],parsedData['statute'],parsedData['offense_type'] = funcs.get_charges(pdfObj, pages_charges)
+    parsedData['offenses'], parsedData['offense_date'], parsedData['statute'], parsedData[
+        'offense_type'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
-    parsedData['bail_amount'],parsedData['bail_paid'],parsedData['bail_date'],parsedData['bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
+    parsedData['bail_amount'], parsedData['bail_paid'], parsedData['bail_date'], parsedData[
+        'bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
     parsedData['dob'] = funcs.get_dob(pdfObj, pages_dob)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
     parsedData['arresting_officer'] = funcs.get_arresting_officer(pdfObj, pages_arresting_officer)
-    parsedData['case_status'],parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
-    parsedData['prelim_hearing_dt'],parsedData['prelim_hearing_time']  = funcs.get_prelim_hearing(pdfObj, pages_prelim_hearing)
+    parsedData['case_status'], parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
+
+    #CP dockets have a different method of presenting prelim hearing information that is not currently supported by this script.
+    if 'CP-51' in filename:
+        parsedData['prelim_hearing_dt'], parsedData['prelim_hearing_time'] = ('CP Docket Not Supported', 'CP Docket Not Supported')
+    else:
+      parsedData['prelim_hearing_dt'], parsedData['prelim_hearing_time'] = funcs.get_prelim_hearing(pdfObj,
+                                                                                                  pages_prelim_hearing)
 
     return parsedData
 
@@ -192,7 +204,7 @@ def parse_pdf(filename, text):
 @argh.arg("--failed", help="Filename for failed file [failed].csv")
 def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
     """ Test scrape_pdf and parse_pdf.
-    
+
         TODO: generate test set of pdf:csv pairs and update this function to
         automatically compare the parsed output to the validated output, instead
         of dumping into csv for manual checking"""
@@ -201,8 +213,8 @@ def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
 
     if testdir == '':
         cwd = os.path.dirname(__file__)
-        testdir = os.path.join(cwd,'tmp/dockets/')
-        savedir = os.path.join(cwd,'tmp/')
+        testdir = os.path.join(cwd, 'tmp/dockets/')
+        savedir = os.path.join(cwd, 'tmp/')
     else:
         savedir = testdir
 
@@ -221,7 +233,7 @@ def test_scrape_and_parse(testdir='', outfile='docket_test', failed='failed'):
             print('Failed: {0}'.format(file))
             countFailed += 1
     print('{0}/{1} failed'.format(countFailed, countAll))
-    
+
     f_failed.close()
 
     final = pd.DataFrame(parsedDockets)
