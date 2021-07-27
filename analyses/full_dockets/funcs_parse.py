@@ -59,7 +59,12 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
     statutes = []
     date = ''
     lineNums = pdf.pq(query_line(page, [x_left, y_bottom, x_right, y_top])).text().split(' ')  # 80
+
+
     if lineNums[0] != '':
+        #Some dockets use 99,999 as a seq number, so we need to strip out the comma before the conversion to int.
+        #Aso done on line 82
+        lineNums = map(lambda x: x.replace(',','') , lineNums)
         lineNums = [int(x) for x in lineNums]
         nLines = len(lineNums)
 
@@ -69,10 +74,13 @@ def offense(pdf, page, y_bottom, y_top, x0, x1, x2, x3, delta=5):
         yArray_top = np.zeros(nLines)
         y = y_top
         lineNums.sort()
+
+
         while y > y_bottom:
             y = y - delta
             info = pdf.pq(query_line(page, [x_left, y, x_right, y_top])).text().split(' ')  # 70
             if len(info[0]) > 0:
+                info = map(lambda x: x.replace(',',''),info)
                 info_int = [int(x) for x in info]
                 info_int.sort()
                 if info_int[-1] == lineNums[k]:
@@ -251,6 +259,8 @@ def get_offense_type(statute):
         output: (list of strings) offense type 
     """
 
+    statute = filter(lambda x: x != '', statute)
+
     offense_type = []
 
     # find title and chapter numbers of offenses
@@ -305,6 +315,8 @@ def get_charges(pdf, pages):
     statuteList = []
     date = ''
     for p in pages:
+
+
         # Charge description bottom left
         info_1 = pdf.pq(query_contains_line(p, 'Statute Description'))
         x1_0 = float(info_1.attr('x0'))
