@@ -244,10 +244,14 @@ def get_bail_info(pdf, pages):
             bail_type = bail_type_list[i]
             
             if bail_type == 'Monetary':
-                bail_percentage = float(bail_percentage_list[counter_percent].strip('%'))
+                try:
+                    bail_percentage = float(bail_percentage_list[counter_percent].strip('%'))
+                except IndexError:
+                    bail_percentage = 10.0 # If monetary bail without percentage specified, assume 10% is posted
                 counter_percent += 1
             else:
-                bail_percentage = ''
+                bail_percentage = 100.0 # For other bail types, e.g., unsecured, assume full amount is posted
+
             if bail_type in ['Monetary', 'Unsecured', 'Nominal']:
                 bail_amount = float(bail_amount_list[counter_amount].strip('$').replace(',', ''))
                 counter_amount += 1
