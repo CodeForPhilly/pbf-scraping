@@ -178,16 +178,25 @@ def parse_pdf(filename, text):
     pdfObj = pdfquery.PDFQuery(filename)
     pdfObj.load(pages)
 
-    # Use PDFQuery object to find location on page where the information appears
+    # Use PDFQuery object to find location on page where the information appears - non-bail info
     parsedData['offenses'], parsedData['offense_date'], parsedData['statute'], parsedData[
         'offense_type'] = funcs.get_charges(pdfObj, pages_charges)
     parsedData['bail_set_by'] = funcs.get_magistrate(pdfObj, pages_bail_set)
-    parsedData['bail_amount'], parsedData['bail_paid'], parsedData['bail_date'], parsedData[
-        'bail_type'] = funcs.get_bail_info(pdfObj, pages_bail_info)
     parsedData['dob'] = funcs.get_dob(pdfObj, pages_dob)
     parsedData['zip'] = funcs.get_zip(pdfObj, pages_zip)
     parsedData['arresting_officer'] = funcs.get_arresting_officer(pdfObj, pages_arresting_officer)
     parsedData['case_status'], parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
+
+    # Use PDFQuery object to find location on page where the information appears - bail info
+    bail_info_list, bail_posted, bail_posted_date = funcs.get_bail_info(pdfObj, pages_bail_info)
+    first_bail_info = bail_info_list[0]
+    parsedData['bail_date'] = first_bail_info['bail_date']
+    parsedData['bail_type'] = first_bail_info['bail_type']
+    parsedData['bail_percentage'] = first_bail_info['bail_percentage']
+    parsedData['bail_amount'] = first_bail_info['bail_amount']
+    parsedData['bail_paid'] = bail_posted
+    parsedData['bail_paid_date'] = bail_posted_date
+    parsedData['bail_info_list'] = bail_info_list
 
     #CP dockets have a different method of presenting prelim hearing information that is not currently supported by this script.
     if 'CP-51' in filename:
