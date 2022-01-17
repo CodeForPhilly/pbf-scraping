@@ -1,10 +1,12 @@
 import re
 import numpy as np
+from datetime import datetime
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from io import StringIO
+
 from offense_category import offense_dict
 
 
@@ -161,54 +163,120 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
 
 
 # Main search functions ------------------------------------------------------
+def parse_bail_actions(action_str):
+    """Get list of Bail Actions, splitting by keywords.
+    
+    NOTE: this keywords list may not be complete!! May result in incorrect parsing."""
+    
+    keywords = ['Set', 'Change', 'Increase', 'Decrease', 'Revoke', 'Reinstate']
+    list1 = re.findall('|'.join(keywords), action_str)
+    list2 = re.split('|'.join(keywords), action_str)[1:]
+    action_list = [(s1 + s2).strip().replace('\n',' ') for (s1, s2) in list(zip(list1, list2))]
+
+    return action_list
+
+
 def get_bail_info(pdf, pages):
-    bail_info = []
+    """Get all information in the bail section
+    
+    Return:
+        bail_info_all: list of dictionaries of bail action information, containing
+            bail_action, bail_date, bail_type, bail_percentage, and bail_amount keys
+        bail_posted: amount of bail posted, computed from NEWEST bail info
+        bail_posted_date: date that bail was posted (if any, otherwise '')
+    """
+    
+    bail_info_all = []
     for p in pages:
-        info_1 = pdf.pq(query_contains_line(p, 'Bail Posting Status'))
-        x1_0 = float(info_1.attr('x0'))
-        x1_1 = float(info_1.attr('x1'))
-        y1_0 = float(info_1.attr('y0'))
-        info_2 = pdf.pq(query_contains_line(p, 'Percentage'))
-        x2_0 = float(info_2.attr('x0'))
-        x2_1 = float(info_2.attr('x1'))
-        info_3 = pdf.pq(query_contains_line(p, 'CHARGES'))
-        if len(info_3) == 0:
-            info_3 = pdf.pq(query_contains_line(p, 'CPCMS'))
-        y3_1 = float(info_3.attr('y1'))
-        info_4 = pdf.pq(query_contains_line(p, 'Bail Action'))
-        x4_1 = float(info_4.attr('x1'))
-        info_5 = pdf.pq(query_contains_line(p, 'Bail Type'))
-        x5_0 = float(info_5.attr('x0'))
-        bail_date = pdf.pq(query_box(p, [x4_1, y3_1, x5_0, y1_0])).text()
+        # Get column x positions
+        result = pdf.pq(query_contains_line(p, 'Bail Action'))
+        x0_bailAction = float(result.attr('x0'))
+        x1_bailAction = float(result.attr('x1'))
+        
+        result = pdf.pq(query_contains_line(p, 'Bail Type'))
+        x0_bailType = float(result.attr('x0'))
 
-        bail_type = pdf.pq(query_box(p, [x5_0, y3_1, x2_0, y1_0])).text()
-        bail_date_list = bail_date.split(' ')
+        result = pdf.pq(query_contains_line(p, 'Percentage'))
+        x0_percentage = float(result.attr('x0'))
+        x1_percentage = float(result.attr('x1'))
 
-        earliest_bail_index = 0
+        result = pdf.pq(query_contains_line(p, 'Bail Posting Status'))
+        x0_bailPostingStatus = float(result.attr('x0'))
+        x1_bailPostingStatus = float(result.attr('x1'))
+        y_top = float(result.attr('y0')) # Top of section content
+        
+        result = pdf.pq(query_contains_line(p, 'Posting Date'))
+        x0_postingDate = float(result.attr('x0'))
+        x1_postingDate = float(result.attr('x1'))
+        
+        # Get bottom of section content
+        result = pdf.pq(query_contains_line(p, 'CHARGES'))
+        if len(result) == 0:
+            result = pdf.pq(query_contains_line(p, 'CPCMS'))
+        y_bottom = float(result.attr('y1'))
+        
+        # Get lists of bail action, bail date, bail type, percentage, and amount
+        bail_action_text = pdf.pq(query_box(p, [x0_bailAction, y_bottom, x1_bailAction + 50, y_top])).text()
+        bail_action_list = parse_bail_actions(bail_action_text)
+        bail_date_list = pdf.pq(query_box(p, [x1_bailAction, y_bottom, x0_bailType, y_top])).text().split(' ')
+        bail_type_list = pdf.pq(query_box(p, [x0_bailType, y_bottom, x0_percentage, y_top])).text().split(' ')
+        bail_percentage_list = pdf.pq(query_box(p, [x0_percentage, y_bottom, x1_percentage, y_top])).text().split(' ')
+        bail_amount_list = pdf.pq(query_box(p, [x1_percentage, y_bottom, x0_bailPostingStatus, y_top])).text().split(' ')       
+        
+        # If couldn't correctly split bail actions, just don't store it
+        if len(bail_action_list) != len(bail_date_list):
+            bail_action_list = [''] * len(bail_date_list)
 
-        # if multiple bail dates in the list, take the earliest one
+        # Occasionally parser grabs the rows in the wrong order (but the same wrong order for all columns); sort
         if len(bail_date_list) > 1:
-            bail_date_sorted = bail_date_list.copy()
-            bail_date_sorted.sort()
-            earliest_value = bail_date_sorted[0]
-            earliest_bail_index = bail_date_list.index(earliest_value)
+            datetime_list = [datetime.strptime(s, '%m/%d/%Y') for s in bail_date_list]
+            indices_sorted = [i for i, v in sorted(enumerate(datetime_list), key=lambda x: x[1])]
+        else:
+            indices_sorted = [0]
 
-        final_bail_date = bail_date_list[earliest_bail_index]
-        bail_type = bail_type.split(' ')[earliest_bail_index]
-        bail_info = pdf.pq(query_box(p, [x2_1, y3_1, x1_0, y1_0])).text()
-
-        # split the list of values by dollar sign and drop the first value since it's blank
-        bail_info_list = bail_info.split('$')
-        bail_info_list.remove(bail_info_list[0])
-        bail_amount = float(bail_info_list[earliest_bail_index].replace(',', ''))
-
-        bail_paid = 0
-        check_posted = pdf.pq(query_line(p, [x1_0, y3_1, x1_1, y1_0])).text()
-
+        # Get each row of bail information
+        bail_info_page = []
+        counter_percent = 0
+        counter_amount = 0
+        for i in indices_sorted:
+            bail_action = bail_action_list[i]
+            bail_date = bail_date_list[i]
+            bail_type = bail_type_list[i]
+            
+            if bail_type == 'Monetary':
+                bail_percentage = float(bail_percentage_list[counter_percent].strip('%'))
+                counter_percent += 1
+            else:
+                bail_percentage = ''
+            if bail_type in ['Monetary', 'Unsecured', 'Nominal']:
+                bail_amount = float(bail_amount_list[counter_amount].strip('$').replace(',', ''))
+                counter_amount += 1
+            else:
+                bail_amount = ''
+                
+            bail_dict = {'bail_action': bail_action,
+                         'bail_date': bail_date,
+                         'bail_type': bail_type,
+                         'bail_percentage': bail_percentage,
+                         'bail_amount': bail_amount}
+            bail_info_page.append(bail_dict)
+        
+        # Check if bail has been posted
+        check_posted = pdf.pq(query_line(p, [x0_bailPostingStatus, y_bottom, x1_bailPostingStatus, y_top])).text()
         if 'Posted' in check_posted:
-            bail_paid = 0.1 * bail_amount
+            # Use MOST RECENT bail percentage and bail amount to compute bail posted
+            latest_info = bail_info_page[-1]
+            bail_posted = 0.01 * latest_info['bail_percentage'] * latest_info['bail_amount']
+            # Occasionally more than one date is listed
+            bail_posted_date_list = pdf.pq(query_line(p, [x0_postingDate, y_bottom, x1_postingDate + 5, y_top])).text().split(' ')
+            bail_posted_date = bail_posted_date_list[0]
+        else:
+            bail_posted = 0
+            bail_posted_date = ''
+        
+        bail_info_all.extend(bail_info_page)
 
-    return bail_amount, bail_paid, final_bail_date, bail_type
+    return bail_info_all, bail_posted, bail_posted_date
 
 
 def get_zip(pdf, page):

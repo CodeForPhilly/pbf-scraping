@@ -80,7 +80,7 @@ def get_pdf_links(docketstr, driver=None):
     driver.get("https://ujsportal.pacourts.us/CaseSearch")
     
     # Execute docket search
-    selector = Select(driver.find_element_by_name("SearchBy"))
+    selector = Select(driver.find_element_by_xpath("//*[@title='Search By']"))
     selector.select_by_visible_text("Docket Number")
     driver.find_element_by_name("DocketNumber").send_keys(docketstr)
     driver.find_element_by_id("btnSearch").click()
@@ -164,7 +164,8 @@ def main(docket='', awsid='', awskey=''):
     # Save docket and court summary data to two .csv files
     dirname = os.path.dirname(__file__)
     tmpdir = "tmp/parsed_docket_data"
-    os.mkdir(os.path.join(dirname, tmpdir))
+    if not os.path.exists(os.path.join(dirname, tmpdir)):
+        os.mkdir(os.path.join(dirname, tmpdir))
     tag = time.strftime("%Y-%m-%d-%H%M%S")
     
     docketName = "{0}/docket-data-{1}.csv".format(tmpdir, tag)
