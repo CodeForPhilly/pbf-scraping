@@ -123,7 +123,6 @@ def main(docket='', awsid='', awskey=''):
     if docket != '':
         # Use single docket if docket number provided
         docketList = [docket]
-        print(docketList)
     else:
         # Fetch list of docket numbers from AWS Athena database
         docketList = fetch_docket_numbers(awsid, awskey)

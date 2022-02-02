@@ -168,7 +168,7 @@ def parse_bail_actions(action_str):
     
     NOTE: this keywords list may not be complete!! May result in incorrect parsing."""
     
-    keywords = ['Set', 'Change', 'Increase', 'Decrease', 'Revoke', 'Reinstate']
+    keywords = ['Deny', 'Denied', 'Set', 'Change', 'Increase', 'Decrease', 'Revoke', 'Reinstate']
     list1 = re.findall('|'.join(keywords), action_str)
     list2 = re.split('|'.join(keywords), action_str)[1:]
     action_list = [(s1 + s2).strip().replace('\n',' ') for (s1, s2) in list(zip(list1, list2))]
@@ -178,6 +178,10 @@ def parse_bail_actions(action_str):
 
 def get_bail_info(pdf, pages):
     """Get all information in the bail section
+    
+    Note that the method used is fairly brittle: rather than going row by row,
+    it get all information in each column as a list (where column lists may be
+    of different lengths) and tries to match row items across columns.
     
     Return:
         bail_info_all: list of dictionaries of bail action information, containing
@@ -238,15 +242,20 @@ def get_bail_info(pdf, pages):
         bail_info_page = []
         counter_percent = 0
         counter_amount = 0
+        bailDeniedCount = 0
         for i in indices_sorted:
             bail_action = bail_action_list[i]
             bail_date = bail_date_list[i]
-            bail_type = bail_type_list[i]
+            if (bail_action == 'Denied') or ('Deny' in bail_action):
+                bailDeniedCount += 1
+                bail_type = 'Denied' # No bail type listed in this case
+            else:
+                bail_type = bail_type_list[i-bailDeniedCount]
             
             if bail_type == 'Monetary':
                 try:
                     bail_percentage = float(bail_percentage_list[counter_percent].strip('%'))
-                except IndexError:
+                except (IndexError, ValueError):
                     bail_percentage = 10.0 # If monetary bail without percentage specified, assume 10% is posted
                 counter_percent += 1
             else:
@@ -256,7 +265,7 @@ def get_bail_info(pdf, pages):
                 bail_amount = float(bail_amount_list[counter_amount].strip('$').replace(',', ''))
                 counter_amount += 1
             else:
-                bail_amount = ''
+                bail_amount = 0.0
                 
             bail_dict = {'bail_action': bail_action,
                          'bail_date': bail_date,
