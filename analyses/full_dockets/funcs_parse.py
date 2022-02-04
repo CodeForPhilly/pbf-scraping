@@ -144,16 +144,17 @@ def bail_set_by(pdf, page, y_bottom, y_top, x0, x1, delta=5):
 
     yArray_bottom[-1] = y_bottom
     yArray_bottom[0:n - 1] = yArray_top[1:]
-
+    
     # Find first line referring to bail decision being made (set or denied)
     isBailFound = False
     for y0, y1 in zip(yArray_bottom, yArray_top):
         data_filedBy = pdf.pq(query_line(page, [x0, y0, x1, y1])).text()
         data_cp = pdf.pq(query_line(page, [0, y0, x0, y1])).text()
 
-        if re.search("Bail Set", data_cp, flags=re.IGNORECASE) or re.search("Bail Denied", data_cp,
-                                                                            flags=re.IGNORECASE) and not isBailFound and not re.search(
-                "Posted", data_cp, flags=re.IGNORECASE):
+        if ((re.search("Bail Set", data_cp, flags=re.IGNORECASE)
+             or re.search("Bail Denied", data_cp, flags=re.IGNORECASE)
+             or re.search("Order Denying Motion to Set Bail", data_cp, flags=re.IGNORECASE))
+            and not (isBailFound or re.search("Posted", data_cp, flags=re.IGNORECASE))):
             isBailFound = True
             magistrate = data_filedBy.strip()
             # sometimes bail is changed over the course of a case, but we're interested in the initial bail, so break out of the loop if we found it.
@@ -184,13 +185,16 @@ def get_bail_info(pdf, pages):
     of different lengths) and tries to match row items across columns.
     
     Return:
-        bail_info_all: list of dictionaries of bail action information, containing
+        bail_entries_all: list of dictionaries of bail action information, containing
             bail_action, bail_date, bail_type, bail_percentage, and bail_amount keys
         bail_posted: amount of bail posted, computed from NEWEST bail info
         bail_posted_date: date that bail was posted (if any, otherwise '')
     """
     
-    bail_info_all = []
+    dateFormat = "%m/%d/%Y"
+    
+    bail_entries_all = [] # From bail actions columns
+    bail_posted_all = [] # From bail posted columns
     for p in pages:
         # Get column x positions
         result = pdf.pq(query_contains_line(p, 'Bail Action'))
@@ -276,20 +280,39 @@ def get_bail_info(pdf, pages):
         
         # Check if bail has been posted
         check_posted = pdf.pq(query_line(p, [x0_bailPostingStatus, y_bottom, x1_bailPostingStatus, y_top])).text()
+        bail_first_posted_amount = 0
+        bail_first_posted_date = ''
+        bail_posted_list = []
         if 'Posted' in check_posted:
-            # Use MOST RECENT bail percentage and bail amount to compute bail posted
-            latest_info = bail_info_page[-1]
-            bail_posted = 0.01 * latest_info['bail_percentage'] * latest_info['bail_amount']
-            # Occasionally more than one date is listed
+            # Occasionally more than one date is listed; grab info for all non-duplicate entries
             bail_posted_date_list = pdf.pq(query_line(p, [x0_postingDate, y_bottom, x1_postingDate + 5, y_top])).text().split(' ')
-            bail_posted_date = bail_posted_date_list[0]
-        else:
-            bail_posted = 0
-            bail_posted_date = ''
+            bail_posted_date_list = list(set(bail_posted_date_list))
+            
+            for postedDate in bail_posted_date_list:
+                # Use the bail amount and percentage set immediately prior to the bail posted date (last item in list of prior actions)
+                priorInfo = [d for d in bail_info_page if datetime.strptime(d['bail_date'], dateFormat) < datetime.strptime(postedDate, dateFormat)][-1]
+                bailPosted = 0.01 * priorInfo['bail_percentage'] * priorInfo['bail_amount']
+                if bail_first_posted_amount == 0:
+                    bail_first_posted_amount = bailPosted
+                if bail_first_posted_date == '':
+                    bail_first_posted_date = postedDate
+                bail_posted_list.append({'date': postedDate, 'amount': bailPosted})
         
-        bail_info_all.extend(bail_info_page)
+        bail_entries_all.extend(bail_info_page)
+        bail_posted_all.extend(bail_posted_list)
+    
+    # For validation, check that all entries are unique
+    entries_seen = []
+    for entry in bail_entries_all:
+        d = entry.copy()
+        d.pop('bail_date')
+        s = ' '.join([str(v) for v in d.values()])
+        entries_seen.append(s)
+    entries_seen_unique = list(set(entries_seen))
+    if len(entries_seen_unique) != len(entries_seen):
+        print("Warning: duplicate entries found, which may indicate an issue with how bail_action was parsed. Other bail information is probably okay, but may want to double check")
 
-    return bail_info_all, bail_posted, bail_posted_date
+    return bail_entries_all, bail_first_posted_amount, bail_first_posted_date, bail_posted_all
 
 
 def get_zip(pdf, page):
@@ -313,7 +336,7 @@ def get_magistrate(pdf, pages):
         if magistrate != '':
             break
 
-            # Top of section
+        # Top of section
         info_1 = pdf.pq(query_contains_line(p, 'Filed By'))
         x0 = float(info_1.attr('x0'))
         y0 = float(info_1.attr('y0'))
