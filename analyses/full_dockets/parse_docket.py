@@ -137,12 +137,14 @@ def parse_pdf(filename, text):
     badPrefixes = ["Name:", "Philadelphia County District Attorney's Office Prosecutor"]
 
     data_attorney = re.findall(specialPatterns['attorney'], text, re.DOTALL)
-    if len(data_attorney) > 0:  # skips empty space also
+    if len(data_attorney) > 0:  # skips empty space also   
         data_attorney = data_attorney[0].strip()
-
         for prefix in badPrefixes:
             if data_attorney.startswith(prefix):
                 data_attorney = data_attorney[len(prefix):].strip()
+        if data_attorney.startswith("Sequence Number"):
+            print('Warning: could not parse attorney')
+            data_attorney = ''
 
         attorney_match = re.search(specialPatterns['attorney_type'], data_attorney)
         if attorney_match:
@@ -188,15 +190,16 @@ def parse_pdf(filename, text):
     parsedData['case_status'], parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
 
     # Use PDFQuery object to find location on page where the information appears - bail info
-    bail_info_list, bail_posted, bail_posted_date = funcs.get_bail_info(pdfObj, pages_bail_info)
+    bail_info_list, bail_first_posted, bail_first_posted_date, bail_posted_list = funcs.get_bail_info(pdfObj, pages_bail_info)
     first_bail_info = bail_info_list[0]
     parsedData['bail_date'] = first_bail_info['bail_date']
     parsedData['bail_type'] = first_bail_info['bail_type']
     parsedData['bail_percentage'] = first_bail_info['bail_percentage']
     parsedData['bail_amount'] = first_bail_info['bail_amount']
-    parsedData['bail_paid'] = bail_posted
-    parsedData['bail_paid_date'] = bail_posted_date
+    parsedData['bail_paid'] = bail_first_posted
+    parsedData['bail_paid_date'] = bail_first_posted_date
     parsedData['bail_info_list'] = bail_info_list
+    parsedData['bail_posted_list'] = bail_posted_list
 
     #CP dockets have a different method of presenting prelim hearing information that is not currently supported by this script.
     if 'CP-51' in filename:
