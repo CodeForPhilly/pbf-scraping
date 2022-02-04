@@ -190,13 +190,13 @@ def parse_pdf(filename, text):
     parsedData['case_status'], parsedData['arrest_dt'] = funcs.get_status(pdfObj, pages_status)
 
     # Use PDFQuery object to find location on page where the information appears - bail info
-    bail_info_list, bail_posted_sum, bail_first_posted_date, bail_posted_list = funcs.get_bail_info(pdfObj, pages_bail_info)
+    bail_info_list, bail_first_posted, bail_first_posted_date, bail_posted_list = funcs.get_bail_info(pdfObj, pages_bail_info)
     first_bail_info = bail_info_list[0]
     parsedData['bail_date'] = first_bail_info['bail_date']
     parsedData['bail_type'] = first_bail_info['bail_type']
     parsedData['bail_percentage'] = first_bail_info['bail_percentage']
     parsedData['bail_amount'] = first_bail_info['bail_amount']
-    parsedData['bail_paid'] = bail_posted_sum
+    parsedData['bail_paid'] = bail_first_posted
     parsedData['bail_paid_date'] = bail_first_posted_date
     parsedData['bail_info_list'] = bail_info_list
     parsedData['bail_posted_list'] = bail_posted_list
