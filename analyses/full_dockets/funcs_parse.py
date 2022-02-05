@@ -290,7 +290,7 @@ def get_bail_info(pdf, pages):
             
             for postedDate in bail_posted_date_list:
                 # Use the bail amount and percentage set immediately prior to the bail posted date (last item in list of prior actions)
-                priorInfo = [d for d in bail_info_page if datetime.strptime(d['bail_date'], dateFormat) < datetime.strptime(postedDate, dateFormat)][-1]
+                priorInfo = [d for d in bail_info_page if datetime.strptime(d['bail_date'], dateFormat) <= datetime.strptime(postedDate, dateFormat)][-1]
                 bailPosted = 0.01 * priorInfo['bail_percentage'] * priorInfo['bail_amount']
                 if bail_first_posted_amount == 0:
                     bail_first_posted_amount = bailPosted
