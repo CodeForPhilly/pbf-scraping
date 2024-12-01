@@ -59,7 +59,7 @@ ptyprocess==0.6.0
 pyasn1==0.4.8
 PyAthena==1.11.1
 pycparser==2.20
-Pygments==2.6.1
+Pygments==2.7.4
 pyparsing==2.4.7
 PyPDF2==1.26.0
 pyquery==1.4.1
